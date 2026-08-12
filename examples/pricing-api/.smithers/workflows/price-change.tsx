@@ -209,7 +209,15 @@ Do NOT create any file under migrations/. Record in summary that the migration i
 ${proposal?.migrationSql ?? ""}`
 }
 
-Then run \`bun test\` and report the pass/fail counts in testReport.
+Then make the suite green. src/pricing.test.ts hard-codes the OLD prices (4900,
+4900 + 2 * 900, and a 4900 roll-up), so a correct price change makes those
+assertions stale. Update those expectations to the approved prices. Keep every
+assertion that is about behaviour rather than a number: the free tier stays free,
+an unknown tier still throws, and the quote shape is unchanged.
+
+Then run \`bun test\` until it reports zero failures. Set testsPassed true only when
+that is what the suite actually printed, and put the real counts in testReport.
+Never weaken or delete a test to get there.
 
 Hard requirement: consumers/checkout.ts and consumers/reporting.ts must keep working unchanged. They both call quote(tierId, seats). If your change breaks either caller, fix your change, not the caller.`}
           </Task>

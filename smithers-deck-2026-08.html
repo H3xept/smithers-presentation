@@ -731,9 +731,9 @@
             <p class="eyebrow smith" style="margin:0">AI Community of Practice · August 2026</p>
             <span class="part-badge">10 min · <b>demo</b></span>
           </div>
-          <h1 class="hero-title">SMITHERS<span class="l2">_</span></h1>
-          <p class="hero-sub">A control plane that keeps long agent runs alive <strong style="color:var(--ink)">across crashes, restarts, and waits on people</strong>.</p>
-          <p class="hero-part-note">Last talk covered the idea: represent agent work as a <b>graph</b>, not a loop. This one covers the tool. What Smithers is, three ways to use it, a live run, and how per-node <b>model binding</b> changes the cost structure.</p>
+          <h1 class="hero-title">GRAPH&nbsp;ENGINEERING<span class="l2">_</span></h1>
+          <p class="hero-sub">Represent agent work as a <strong style="color:var(--ink)">graph</strong>, not a loop — durable, resumable, and inspectable by construction.</p>
+          <p class="hero-part-note">Last talk made the case for graphs. This one shows a concrete implementation: <b>Smithers</b>, a control plane that keeps long agent runs alive across crashes, restarts, and waits on people. What it is, three ways to use it, a live run, and how per-node <b>model binding</b> changes the cost structure.</p>
           <p class="hero-meta">durable · typed · resumable · measurable</p>
         </div>
         <div class="canvas-wrap"><canvas id="graphCanvas" width="760" height="760"></canvas></div>
@@ -770,7 +770,7 @@
         <div class="card"><span class="k">?</span><h3>No idea why</h3><p>It failed somewhere around turn 40, and there is no record of the state at that point.</p></div>
       </div>
       <p class="callout">None of these are agent failures. They are missing infrastructure around the agent.</p>
-      <p class="note" style="margin-top:1.1rem">// scope check, so the rest of this talk is honest: Smithers is a process <b>you</b> run, not a hosted service. Close the lid and the run still stops — what changes is that every finished node is already persisted, so the next start resumes instead of restarting, and <code style="color:var(--cyan)">smithers supervise</code> auto-resumes runs whose owner process died. Running genuinely overnight still needs a machine that stays awake.</p>
+      <p class="note" style="margin-top:1.1rem">// scope check, so the rest of this talk is honest: Smithers is a process <b>you</b> run, not a hosted service. Close the lid and the run still stops — <code style="color:var(--cyan)">smithers supervise</code> auto-resumes runs whose owner process died, but running genuinely overnight still needs a machine that stays awake.</p>
     </div>
   </section>
 
@@ -779,7 +779,7 @@
     <div class="slide-inner">
       <p class="eyebrow smith">Part 2 · what it is — the project's own description</p>
       <h2 class="headline">“Durable AI workflow orchestration<br />as a <span class="accent-smith">JSX runtime</span>.”</h2>
-      <p class="lead wide">A workflow is a TypeScript JSX tree in your repo. It runs for minutes or days. Every finished step is persisted the moment it finishes, so a crash resumes at the last completed node instead of starting over. A run waiting on a human is <strong>a row in a database, not a process</strong> — it costs nothing while it waits.</p>
+      <p class="lead wide">A workflow is a TypeScript JSX tree in your repo. It runs for minutes or days, and the runtime records every finished step as a typed, persisted row — the design decision from the overview, implemented. The next three slides show what that looks like in practice.</p>
       <div class="chips" style="margin-top:1.6rem">
         <span class="on">npm · smithers-orchestrator</span><span>smithers.sh</span><span>41 components</span><span>19 agent adapters</span><span>0.31.0 in our monorepo</span>
       </div>
@@ -823,7 +823,7 @@
       <div class="cols two">
         <div>
           <p class="lead">A run is a table of frames. Each node writes its validated output the moment it finishes, so restarting picks up at the node it was on and nodes 01 and 02 are paid for once.</p>
-          <p class="callout smith">In-flight attempts are marked stale and retried on resume. Same input plus same code gives the same task ids, so a resume lands deterministically.</p>
+          <p class="callout smith">In-flight attempts are marked stale and retried on resume, and because task ids are deterministic, a resume lands exactly where the crash happened.</p>
         </div>
         <div>
           <div class="frames">
@@ -846,7 +846,7 @@
   <section class="slide" id="s6">
     <div class="slide-inner">
       <p class="eyebrow">Part 3 · three ways to use it</p>
-      <h2 class="headline">Three routes in. Take the <span class="accent">lightest</span> one that keeps the durability you need.</h2>
+      <h2 class="headline">Three routes in, ordered by <span class="accent">setup cost</span>.</h2>
       <svg class="modeviz" viewBox="0 0 1180 118" role="img" aria-label="Three routes compared. Direct: a single agent turn with no run record. Oneshot: one node above one persisted row. Workflow: a fan-out and join above five persisted rows.">
         <line x1="393" y1="10" x2="393" y2="108" stroke="#232C3D" stroke-width="1"></line>
         <line x1="787" y1="10" x2="787" y2="108" stroke="#232C3D" stroke-width="1"></line>
@@ -880,7 +880,7 @@
       <div class="steps" style="margin-top:.4rem">
         <div class="step">
           <div class="n">TIER 0</div><div class="t">Direct</div>
-          <div class="d">One typo, one rename, under ~10 agent turns. No orchestration earns its keep here.</div>
+          <div class="d">One typo, one rename, under ~10 agent turns. A single agent call with no run record.</div>
           <span class="cmd">// just do it</span>
         </div>
         <div class="step now">
@@ -894,7 +894,7 @@
           <span class="cmd">smithers up wf.tsx --interactive</span>
         </div>
       </div>
-      <p class="callout" style="margin-top:1.4rem">If a procedure <strong>recurs</strong>, that's the argument for a workflow over a skill: a workflow is executable, durable, typed, inspectable and measurable, where a skill is prose an agent re-reads every time.</p>
+      <p class="callout" style="margin-top:1.4rem">A workflow and a skill solve different problems: a workflow is executable, durable, typed, inspectable and measurable; a skill is prose an agent re-reads every time it runs.</p>
     </div>
   </section>
 
@@ -925,7 +925,7 @@
             <li><code style="font-family:var(--mono);color:var(--cyan)">pause</code> / <code style="font-family:var(--mono);color:var(--cyan)">hijack</code> <span>— park it, or resume the session yourself in your own harness</span></li>
             <li>optional review <span>— <code style="font-family:var(--mono);color:var(--cyan)">--review on</code> adds a reviewer pass</span></li>
           </ul>
-          <p class="callout">If oneshot covers the task, you never need to write a workflow.</p>
+          <p class="callout">Oneshot runs on the same substrate as a workflow: one durable, resumable, inspectable run — with zero authoring.</p>
         </div>
       </div>
     </div>
@@ -941,7 +941,7 @@
         <div class="card"><span class="k">you say</span><h3>an outcome</h3><p>“Don't stop until this is production-ready.” · “Prove this third-party service works.” · “Show me it works.” · “What happened to that run?”</p></div>
         <div class="card smith"><span class="k">your agent does</span><h3>the durable work</h3><p>Encodes tests, a reviewer gate and evals as the finish line. Watches the run, reads <code style="font-family:var(--mono)">why</code> / <code style="font-family:var(--mono)">events</code> / <code style="font-family:var(--mono)">scores</code>, and reports evidence back in plain English.</p></div>
       </div>
-      <p class="callout smith" style="margin-top:1.6rem">You do not need to learn the ~85 CLI commands. <code style="font-family:var(--mono)">smithers skills add</code> installs the skill into Claude Code, Codex, Pi and Kimi, and <code style="font-family:var(--mono)">smithers mcp add</code> mounts it as an MCP server. Then you describe outcomes.</p>
+      <p class="callout smith" style="margin-top:1.6rem">You do not need to learn the ~75 CLI commands. <code style="font-family:var(--mono)">smithers skills add</code> installs the skill into Claude Code, Codex, Pi and Kimi, and <code style="font-family:var(--mono)">smithers mcp add</code> mounts it as an MCP server. Then you describe outcomes.</p>
       <p class="note">// there is also <code style="color:var(--cyan)">smithers ask "..."</code> — it answers questions about itself using your installed agent.</p>
     </div>
   </section>
@@ -972,7 +972,7 @@
         <div>
           <p class="lead"><code style="font-family:var(--mono);color:var(--cyan)">make-workflow</code> is itself a workflow. It clarifies your request into a spec, pulls the relevant docs and skills, designs the graph, <strong>pauses for your approval</strong>, scaffolds the <code style="font-family:var(--mono)">.tsx</code> and <code style="font-family:var(--mono)">.mdx</code>, then loops on <code style="font-family:var(--mono)">graph</code> until it renders.</p>
           <p class="lead">The default authoring path afterwards isn't TypeScript at all — it's editing a plain Markdown prompt in <code style="font-family:var(--mono);color:var(--cyan)">.smithers/prompts/</code>. You drop to JSX when you need branching, fan-out, or loops.</p>
-          <p class="callout">The output is plain TSX in your repo — review it like any other code before you run it.</p>
+          <p class="callout">The output is plain TSX in your repo — diffable and reviewable like any other code.</p>
         </div>
       </div>
     </div>
@@ -997,7 +997,7 @@
         </tbody>
       </table>
       </div>
-      <p class="callout" style="margin-top:1.4rem">Check the sources in. A graph in the repo is a graph the next engineer — and the next agent — inherits.</p>
+      <p class="callout" style="margin-top:1.4rem">A graph checked into the repo is a graph the next engineer — and the next agent — inherits.</p>
       <p class="note">// gotcha we hit: the default <code style="color:var(--cyan)">.gitignore</code> line ignores <code>.smithers/</code> wholesale. Narrow it to the runtime dirs or every workflow you write is invisible to the team.</p>
       <p class="note">// second gotcha: the generated <code>agents.ts</code> starts with a <code style="color:var(--cyan)">// smithers-source: generated</code> sentinel, and <code>smithers agent add</code> rewrites any file that still has it. Delete the line once you've tuned your pools.</p>
     </div>
@@ -1055,13 +1055,13 @@
           <tr><td>Branch</td><td>Mount one of two subgraphs at runtime.</td><td><code>if · then · else</code></td></tr>
           <tr><td>Worktree</td><td>Run the subtree in its own isolated VCS worktree and branch.</td><td><code>path · branch · baseBranch</code></td></tr>
           <tr><td>ApprovalGate</td><td>Park the run until a human signs off. Denial can fail, skip, or continue.</td><td><code>request · when · onDeny · timeoutMs</code></td></tr>
-          <tr><td>Signal / WaitForEvent</td><td>Suspend durably until a typed payload or a correlated event lands.</td><td><code>id · schema · correlationId</code></td></tr>
+          <tr><td>Signal / WaitForEvent</td><td>Suspend durably until a typed payload or a correlated event lands.</td><td><code>id · schema / event · correlationId</code></td></tr>
           <tr><td>Sandbox</td><td>Push the subtree off-host into a real sandbox, with egress and resource limits.</td><td><code>provider · runtime · egress · cpuLimit</code></td></tr>
         </tbody>
       </table>
       </div>
       <p class="callout smith" style="margin-top:1.3rem">Common patterns ship as components, so you rarely build them yourself: <code style="font-family:var(--mono)">ReviewLoop</code> · <code style="font-family:var(--mono)">Panel</code> · <code style="font-family:var(--mono)">Debate</code> · <code style="font-family:var(--mono)">Supervisor</code> · <code style="font-family:var(--mono)">Saga</code> · <code style="font-family:var(--mono)">Optimizer</code> · <code style="font-family:var(--mono)">Sidecar</code> · <code style="font-family:var(--mono)">MergeQueue</code> · <code style="font-family:var(--mono)">Kanban</code> · <code style="font-family:var(--mono)">DriftDetector</code> · <code style="font-family:var(--mono)">ContinueAsNew</code>.</p>
-      <p class="note">// each is ~20–40 lines of JSX over the same substrate. read one, fork it, own it.</p>
+      <p class="note">// each is ~20–40 lines of JSX over the same substrate — small enough to read in full before using one.</p>
     </div>
   </section>
 
@@ -1117,11 +1117,76 @@
       </div>
       <div class="code term" data-file="the debugger for agentic work" style="margin-top:1.3rem">
 <pre><span class="ps">$</span> smithers timeline <span class="pn">&lt;</span>run<span class="pn">&gt;</span>     <span class="com"># frames, forks, checkpoints</span>
-<span class="ps">$</span> smithers node <span class="pn">&lt;</span>run<span class="pn">&gt;</span> gate     <span class="com"># retries, tool calls, output</span>
+<span class="ps">$</span> smithers node gate -r <span class="pn">&lt;</span>run<span class="pn">&gt;</span>  <span class="com"># retries, tool calls, output</span>
 <span class="ps">$</span> smithers what <span class="pn">&lt;</span>run<span class="pn">&gt;</span>         <span class="com"># a cheap agent narrates what happened</span>
-<span class="ps">$</span> smithers fork <span class="pn">&lt;</span>run<span class="pn">&gt;</span> --seq 42  <span class="com"># branch from the frame that failed</span></pre>
+<span class="ps">$</span> smithers fork wf.tsx -r <span class="pn">&lt;</span>run<span class="pn">&gt;</span> -f 42 <span class="com"># branch from the frame that failed</span></pre>
       </div>
       <p class="callout smith">Instead of guessing from logs, you inspect the exact frame where the run diverged — and branch from it.</p>
+    </div>
+  </section>
+  <!-- 15a · CUSTOM UIs -->
+  <section class="slide" id="s25">
+    <div class="slide-inner">
+      <p class="eyebrow smith">Part 4 · surfaces · custom UIs</p>
+      <h2 class="headline">A workflow can ship its <span class="accent-smith">own UI</span>.</h2>
+      <div class="cols two">
+        <div>
+          <p class="lead">A workflow declares <code style="font-family:var(--mono);color:var(--cyan)">&lt;UI entry="../ui/spec-then-build.tsx" /&gt;</code> and the Gateway builds and serves that file per run. The page is composed from shipped components — <code style="font-family:var(--mono)">WorkflowUiShell</code>, <code style="font-family:var(--mono)">RunTree</code>, <code style="font-family:var(--mono)">RunEventLog</code>, <code style="font-family:var(--mono)">ApprovalPanel</code>, <code style="font-family:var(--mono)">MarkdownEditor</code>, <code style="font-family:var(--mono)">DiffHunks</code>, <code style="font-family:var(--mono)">KpiStat</code> — over live Gateway hooks, not hand-rolled markup.</p>
+          <p class="lead">In <code style="font-family:var(--mono)">examples/todo-cli</code>, the agent drafts a spec, the page renders it in a Markdown editor, and the text <em>you edit in the browser</em> is what the implementer node receives. One <code style="font-family:var(--mono)">.tsx</code> file, checked in next to the workflow.</p>
+          <p class="callout smith">The UI is part of the workflow's contract: the button's <code style="font-family:var(--mono)">nodeId</code> is the same string as the gate's <code style="font-family:var(--mono)">id</code> prop.</p>
+        </div>
+        <div>
+          <div class="code term" data-file="two UIs, one gateway">
+<pre><span class="com"># the workflow's own page, per run</span>
+<span class="ps">$</span> smithers ui <span class="pn">&lt;</span>run<span class="pn">&gt;</span>          <span class="com"># newest run if omitted</span>
+<span class="ps">$</span> smithers ui -w spec-then-build
+
+<span class="com"># the full control-plane UI — every run,</span>
+<span class="com"># trees, events, approvals, chat</span>
+<span class="ps">$</span> smithers ui --app          <span class="com"># serves on :7332</span>
+<span class="ps">$</span> smithers ui --app --rebuild <span class="com"># rebuild the bundle</span></pre>
+          </div>
+          <ul class="list tight smith" style="margin-top:1.1rem">
+            <li><code style="font-family:var(--mono);color:var(--cyan)">smithers ui</code> <span>— starts a Gateway itself if none answers on :7331</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">--app</code> <span>— the whole apps/smithers control surface, built on first use, served against the same local Gateway</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">smithers monitor</code> <span>— the multi-run dashboard, when you want breadth instead of one workflow's page</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15b · A COMPLETED RUN, READ BACK -->
+  <section class="slide" id="s26">
+    <div class="slide-inner">
+      <p class="eyebrow smith">Part 4 · a finished run, read back from the rows</p>
+      <h2 class="headline">One completed flow: <span class="accent-smith">23m 43s</span>, agents busy for ~4.</h2>
+      <div class="cols two">
+        <div class="code term" data-file="smithers timeline · a real finished run">
+<pre><span class="ps">$</span> smithers timeline run-1786513356304
+run-1786513356304
+  Frame 1  05:42:38Z  42b6dcbc  <span class="com">← up -d · render</span>
+  Frame 2  05:44:02Z  c4a8d035  <span class="com">← draft-spec ✓</span>
+  <span class="com">·· parked 19m 44s · human edits the spec ··</span>
+  Frame 3  06:03:46Z  9bd446b4  <span class="com">← signal lands</span>
+  Frame 5  06:03:46Z  0605469e  <span class="com">← await-edit ✓</span>
+  Frame 6  06:05:59Z  278f60e5  <span class="com">← implement ✓</span>
+  Frame 8  06:06:22Z  f61b61ca  <span class="com">← test ✓ · succeeded</span>
+
+<span class="ps">$</span> smithers inspect run-1786513356304
+  elapsed: 23m 43s · state: succeeded
+  draft-spec ✓ · await-edit ✓ · implement ✓ · test ✓</pre>
+        </div>
+        <div>
+          <p class="lead">This is the <code style="font-family:var(--mono)">spec-then-build</code> run from the demo, read back after the fact. Every claim on this slide comes from the stored frames, not from memory or logs.</p>
+          <ul class="list tight smith" style="margin-top:1.1rem">
+            <li>19m 44s of the 23m 43s is the park <span>— the run waited on a human edit as a row, at zero token cost, between frames 2 and 3</span></li>
+            <li>each frame has a content hash <span>— <code style="font-family:var(--mono)">fork -f &lt;frame&gt;</code> can branch from any of them</span></li>
+            <li>the same rows feed every surface <span>— <code style="font-family:var(--mono)">timeline</code>, <code style="font-family:var(--mono)">inspect</code>, <code style="font-family:var(--mono)">what</code>, the custom UI and the monitor all read this one table</span></li>
+          </ul>
+          <p class="callout smith" style="margin-top:1.1rem">Properties 1–3 on one screen: the run survived a park, the wait cost nothing, and the history is still inspectable a day later.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1208,7 +1273,7 @@
           <p>Pay by the hour for GPUs. Fixed whether idle or flat out — so the whole game becomes keeping them busy.</p>
         </div>
       </div>
-      <p class="callout" style="margin-top:1.3rem">That flips cost from variable to fixed. Whether it pays comes down to one number: <strong>sustained</strong> throughput.</p>
+      <p class="callout" style="margin-top:1.3rem">That flips cost from variable to fixed — which makes utilization, not price per token, the number that decides it.</p>
     </div>
   </section>
 
@@ -1258,7 +1323,7 @@
           </div>
         </div>
       </div>
-      <p class="note" style="margin-top:.8rem">// RunPod-class rates, mid-2026 · my own numbers, not a vendor's — re-derive them before you bank on them. and measure <b>termination rate</b>, not just pass-rate: aggressive pruning is near-lossless on benchmarks and doubles non-termination on long agentic runs.</p>
+      <p class="note" style="margin-top:.8rem">// RunPod-class rates, mid-2026 · my own numbers, not a vendor's, and point-in-time. one measured caveat: aggressive pruning is near-lossless on benchmarks but doubles non-termination on long agentic runs, so termination rate matters as much as pass-rate.</p>
     </div>
   </section>
 
@@ -1306,11 +1371,11 @@
       <p class="eyebrow">Summary</p>
       <h2 class="headline">Three things to remember.</h2>
       <div class="stick">
-        <div class="item"><div class="t">State outlives the process.<span>Properties 1 and 3 — every finished node is a persisted row, so a restart resumes at the last completed node, and the same rows are what make <code style="font-family:var(--mono)">rewind</code>, <code style="font-family:var(--mono)">fork</code> and <code style="font-family:var(--mono)">replay</code> possible.</span></div></div>
-        <div class="item"><div class="t">A run can wait for a person at no cost.<span>Property 2 — a parked run holds no thread and spends no tokens. Approvals and <code style="font-family:var(--mono)">ask-human</code> are nodes, and the decision is a row someone writes later from the CLI, the RPC, or the monitor.</span></div></div>
-        <div class="item"><div class="t">Each node picks its own model and sandbox.<span>Property 4 — roles are bound to engines in one file, so a cheap model can take the safe steps, and moving a role to a self-hosted endpoint is a one-line change you can measure against your eval suite.</span></div></div>
+        <div class="item"><div class="t">State outlives the process.<span>Restarts resume; the stored frames double as the debugger.</span></div></div>
+        <div class="item"><div class="t">A run can wait for a person at no cost.<span>Gates and questions are nodes; the decision is a row written later.</span></div></div>
+        <div class="item"><div class="t">Each node picks its own model and sandbox.<span>Roles bind to engines in one file — including self-hosted endpoints.</span></div></div>
       </div>
-      <p class="callout" style="margin-top:1.6rem">Try it on something small: <code style="font-family:var(--mono)">smithers oneshot "&lt;a task you were going to supervise anyway&gt;"</code>. If you run it twice, write it as a workflow.</p>
+      <p class="callout" style="margin-top:1.6rem">The smallest entry point is <code style="font-family:var(--mono)">smithers oneshot "&lt;goal&gt;"</code> — no setup, one resumable run. Everything else in this deck is reachable from there.</p>
       <p class="note" style="margin-top:.9rem">// smithers.sh · github.com/smithersai/smithers · <code style="color:var(--cyan)">smithers ask "..."</code> · questions?</p>
     </div>
   </section>
@@ -1319,17 +1384,18 @@
   <section class="slide" id="s23">
     <div class="slide-inner">
       <p class="eyebrow">Appendix · presenter runbook <span class="live">demo</span></p>
-      <h2 class="headline">The two demos, timed.</h2>
+      <h2 class="headline">The live moments, timed.</h2>
       <div class="pres-lock">
         <p class="lead wide">Presenter mode is off, so the timings, pre-flight checks and offline fallbacks stay hidden — this slide is safe to leave up while the room can see the screen.</p>
       </div>
       <div class="pres-only">
       <div class="runbook">
-        <div class="rb"><div class="clock">-10m</div><div class="what"><b>Before you start.</b> <code>smithers oneshot --status</code> must print usable agents. <code>smithers ps</code> must be reachable. Have a repo with <code>.smithers/</code> already seeded and one <em>real</em> small task picked out.</div></div>
-        <div class="rb"><div class="clock">-2m</div><div class="what"><b>Pre-warm demo 1.</b> Launch the oneshot before the talk so there's a run with real output to show. Fresh runs are ten minutes of watching a spinner.</div></div>
-        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Demo 1 · slide 08.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
-        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Demo 2 · slide 10.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> live — it renders the whole graph in a second and it's the most convincing thing in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
-        <div class="rb"><div class="clock">06:00</div><div class="what"><b>The crash test · slide 06.</b> If demo 1 is still running: <code>Ctrl-C</code> it, then <code>smithers up ... --resume true</code>. Ninety seconds, and it lands the whole durability argument better than the slide does.</div></div>
+        <div class="rb"><div class="clock">-10m</div><div class="what"><b>Before you start.</b> <code>smithers oneshot --status</code> must print usable agents. <code>smithers ps</code> must be reachable. The three example repos each need their run pre-warmed — full command order in <code>demo-runbook.html</code> and each repo's <code>DEMO.md</code>.</div></div>
+        <div class="rb"><div class="clock">-2m</div><div class="what"><b>Pre-warm everything.</b> Launch the oneshot, park <code>examples/pricing-api</code> at its gate and <code>examples/todo-cli</code> at its spec editor. Fresh runs are ten minutes of watching a spinner.</div></div>
+        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Live 1 · slide 08 · oneshot.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
+        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Live 2 · slide 10 · the graph.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> renders the whole graph in a second without calling a model — the most convincing second in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
+        <div class="rb"><div class="clock">06:30</div><div class="what"><b>Live 3 · slide 14 · the gate.</b> The parked <code>pricing-api</code> run. <code>smithers why &lt;run&gt;</code> names the blocker, then <code>smithers deny … --note "…"</code> and watch the revise node wake. This is the best argument in the talk.</div></div>
+        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 16 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 26 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
         <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
       </div>
       </div>
@@ -1348,14 +1414,14 @@
         <div class="card">
           <span class="k">approval gates</span>
           <h3>examples/pricing-api</h3>
-          <p>Nine files. A price change plus a migration, with two callers as the blast radius. The hero beat is the <em>deny</em>: the rejection note feeds the revise node and the second proposal is non-breaking.</p>
+          <p>Thirteen files. A price change plus a migration, with two callers as the blast radius. The hero beat is the <em>deny</em>: the rejection note feeds the revise node and the second proposal is non-breaking.</p>
           <span class="ex">smithers deny &lt;run&gt; --node gate --note "…"</span>
           <span class="ex">smithers up … --run-id &lt;run&gt; --resume true</span>
         </div>
         <div class="card">
           <span class="k">observability</span>
           <h3>examples/flaky-monorepo</h3>
-          <p>Twelve packages, twelve defects, twelve parallel lanes. One lane is wall-clock flaky and retries; one has a real type error. Point at the trace waterfall and the token bill, not at prose.</p>
+          <p>Twelve packages, twelve defects, twelve parallel lanes. One lane is wall-clock flaky and retries; one has a real type error. 27 nodes in 2m 21s. Point at the node-throughput burst and the token bill split by model, not at prose.</p>
           <span class="ex">smithers observability --detach</span>
           <span class="ex">smithers scores &lt;run&gt; --node report</span>
         </div>
@@ -1410,6 +1476,31 @@
       <p class="note">// the artifact patches agent-task prompts by <code style="color:var(--cyan)">nodeId</code> and nothing else — structure, output schemas, retries, approvals and persistence are untouched. honest caveat: field-wide eval-driven development for coding agents is still under-evidenced; a regression suite still beats a hunch.</p>
     </div>
   </section>
+  <!-- APPENDIX · CHEATSHEET -->
+  <section class="slide" id="s27">
+    <div class="slide-inner">
+      <p class="eyebrow">Appendix · cheatsheet</p>
+      <h2 class="headline">The commands that cover <span class="accent">a normal day</span>.</h2>
+      <div style="overflow-x:auto">
+      <table class="maptable compact">
+        <thead><tr><th>do</th><th>command</th><th>notes</th></tr></thead>
+        <tbody>
+          <tr><td>run a goal</td><td><code>smithers oneshot "&lt;goal&gt;"</code></td><td>no setup · <code>--review on</code> adds a reviewer pass</td></tr>
+          <tr><td>run a workflow</td><td><code>smithers up wf.tsx -d</code></td><td><code>--interactive</code> for the TUI · <code>--run-id &lt;id&gt; --resume true</code> to resume</td></tr>
+          <tr><td>sanity-check a graph</td><td><code>smithers graph wf.tsx</code></td><td>renders without executing · must exit 0</td></tr>
+          <tr><td>see what's running</td><td><code>smithers ps</code> · <code>smithers status &lt;run&gt;</code></td><td><code>why &lt;run&gt;</code> names the blocker + the unblock command</td></tr>
+          <tr><td>watch it</td><td><code>smithers ui &lt;run&gt;</code> · <code>smithers ui --app</code> · <code>smithers monitor</code></td><td>workflow page · control plane · multi-run dashboard</td></tr>
+          <tr><td>read the work</td><td><code>smithers chat</code> · <code>smithers diff</code> · <code>smithers logs &lt;run&gt;</code></td><td><code>what &lt;run&gt;</code> narrates the recorded facts</td></tr>
+          <tr><td>unblock a human gate</td><td><code>smithers approve &lt;run&gt; --node &lt;id&gt;</code></td><td><code>deny … --note "…"</code> feeds the note back · <code>human inbox</code> lists pending</td></tr>
+          <tr><td>deliver an event</td><td><code>smithers signal &lt;run&gt; &lt;name&gt;</code></td><td>wakes <code>&lt;Signal&gt;</code> / <code>&lt;WaitForEvent&gt;</code> · <code>--correlation</code> must match</td></tr>
+          <tr><td>time-travel</td><td><code>smithers timeline &lt;run&gt;</code> · <code>fork wf.tsx -r &lt;run&gt; -f N</code></td><td><code>replay</code> re-executes · <code>rewind</code> in place · <code>restore</code> resets files</td></tr>
+          <tr><td>stop things</td><td><code>smithers pause &lt;run&gt;</code> · <code>cancel &lt;run&gt;</code> · <code>down</code></td><td>pause parks resumably · down cancels every active run</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="note" style="margin-top:1.2rem">// invoke via <code style="color:var(--cyan)">bunx smithers-orchestrator &lt;cmd&gt;</code> · every row checked against 0.31.0 <code>--help</code> · <code style="color:var(--cyan)">smithers ask "…"</code> answers the rest.</p>
+    </div>
+  </section>
 
 </div>
 
@@ -1421,7 +1512,7 @@
     </svg>
     <span>Smithers · Aug 2026</span>
   </div>
-  <div class="counter"><span id="actlabel" style="color:var(--ink-faint);margin-right:1.1rem"></span><b id="cur">01</b> / <span id="total">23</span></div>
+  <div class="counter"><span id="actlabel" style="color:var(--ink-faint);margin-right:1.1rem"></span><b id="cur">01</b> / <span id="total">28</span></div>
 </div>
 
 <div class="progress" id="bar"></div>
@@ -1492,11 +1583,11 @@
       s3: 'part 2 · what it is', s4: 'part 2 · what it is', s5: 'part 2 · property 1/4',
       s6: 'part 3 · using it', s7: 'part 3 · using it', s8: 'part 3 · using it',
       s9: 'part 3 · using it', s10: 'part 3 · using it', s11: 'part 3 · using it', s12: 'part 3 · using it',
-      s13: 'part 4 · property 2/4', s14: 'part 4 · property 3/4', s16: 'part 4 · property 4/4',
+      s13: 'part 4 · property 2/4', s14: 'part 4 · property 3/4', s25: 'part 4 · surfaces', s26: 'part 4 · read-back', s16: 'part 4 · property 4/4',
       s17: 'part 5 · cost', s18: 'part 5 · cost', s19: 'part 5 · cost',
       s20: 'part 5 · cost', s21: 'part 5 · cost',
       s22: 'summary',
-      s23: 'appendix', s24: 'appendix', s15: 'appendix',
+      s23: 'appendix', s24: 'appendix', s15: 'appendix', s27: 'appendix',
     };
 
     function show(n) {

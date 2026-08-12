@@ -115,13 +115,43 @@
   .toc a:hover { color: var(--ink); border-color: var(--ember); }
   .num { font-family: var(--mono); color: var(--ink-faint); font-size: .8em; margin-right: .5rem; }
   footer { color: var(--ink-faint); font-family: var(--mono); font-size: .74rem; border-top: 1px solid var(--line); padding-top: 1.4rem; margin-top: 3rem; }
+  /* ---------- shared appendix nav ---------- */
+  .sx-nav {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .5rem;
+    margin: 0 0 0; padding: .5rem 1.1rem;
+    background: rgba(11,14,20,.93); backdrop-filter: blur(10px);
+    border-bottom: 1px solid #232C3D;
+    font: 500 12.5px/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  .sx-nav a { color: #98A2B6; text-decoration: none; padding: .2rem .45rem; border-radius: 5px; }
+  .sx-nav a:hover { color: #E9ECF3; background: #19212F; }
+  .sx-nav a[aria-current="page"] { color: #FF8A4C; background: rgba(255,138,76,.10); }
+  .sx-nav .sx-home { color: #E9ECF3; font-weight: 600; }
+  .sx-nav .sx-sep { color: #5B6679; }
+  .sx-nav .sx-gh { margin-left: auto; color: #62CBDA; }
+  @media (max-width: 720px) { .sx-nav .sx-gh { margin-left: 0; } }
+  @media print { .sx-nav { display: none; } }
 </style>
+
+<nav class="sx-nav" aria-label="Appendices">
+  <a class="sx-home" href="./">Smithers · Aug 2026</a>
+  <span class="sx-sep">/</span>
+  <a href="smithers-deck-2026-08.html">deck</a>
+  <a href="smithers-command-reference.html">A · CLI</a>
+  <a href="human-decisions-in-workflow-uis.html">B · human decisions</a>
+  <a href="demo-runbook.html">C · runbook</a>
+  <a href="examples-brainstorm.html" aria-current="page">D · why these demos</a>
+  <a class="sx-gh" href="https://github.com/H3xept/smithers-presentation">repo ↗</a>
+</nav>
 
 <div class="wrap">
 
   <p class="eyebrow">Brainstorm · Smithers talk · Aug 2026</p>
   <h1>Three sub-repos, three flows.</h1>
   <p class="lead">One demo repo per idea. Each sub-repo is small enough to read on a projector in ten seconds, and each one produces work that <em>genuinely needs</em> the flow it showcases. That second constraint is the whole design: an approval gate on a change nobody would care about teaches the audience that gates are ceremony.</p>
+
+  <div class="callout warn"><b>Read this as a design record, not a manual.</b> It is the pass that chose the three demos, written before any of them existed — which is why the "considered and cut" section at the bottom is the useful half. Everything here has since been reconciled against the repos as built and against a live <code>smithers@0.31.0</code>, and where reality disagreed with the plan, the plan lost: the Tempo waterfall this document originally promised does not exist, and the callout in §02 explains what replaced it. For the commands you would actually type, read <a href="demo-runbook.html">the runbook</a> and each repo's <code>DEMO.md</code>.</div>
 
   <div class="toc">
     <a href="#a">01 · pricing-api → approval gates</a>
@@ -182,7 +212,7 @@
     <p><strong>The hero moment is the deny, not the approve.</strong> You reject with a written reason — "don't break <code>checkout.ts</code>, ship it behind a flag" — the workflow feeds that string back into the revise node, and the second proposal is non-breaking. That proves the gate is a typed <em>input</em> to the graph, not a checkbox in front of a script.</p>
 
     <h4>demo beats (~2 min)</h4>
-    <div class="beat"><b>0:00</b> Show <code>prices.json</code> and the two consumers. Nine files, no explanation needed.</div>
+    <div class="beat"><b>0:00</b> Show <code>prices.json</code> and the two consumers. Thirteen files in the whole repo, no explanation needed.</div>
     <div class="beat"><b>0:20</b> Run is pre-warmed and already parked at the gate. <code>smithers why &lt;run&gt;</code> prints exactly what it is waiting for.</div>
     <div class="beat"><b>0:40</b> Open <code>smithers monitor</code>. The approval panel shows the diff plus the agent's blast-radius note.</div>
     <div class="beat"><b>1:10</b> <code>smithers deny &lt;run&gt; --node gate --note "…"</code>, then resume with <code>--run-id &lt;run&gt; --resume true</code>. Watch the revise node wake up.</div>
@@ -199,9 +229,9 @@
   <!-- ============================== 2 ============================== -->
   <section id="b">
     <p class="eyebrow cyan">Example 02 · observability</p>
-    <h2><span class="num">02</span>flaky-monorepo — twelve spans and one liar</h2>
+    <h2><span class="num">02</span>flaky-monorepo — twelve lanes and one liar</h2>
     <p>
-      <span class="tag cyan">OTel traces</span><span class="tag cyan">token cost</span>
+      <span class="tag cyan">OTel metrics</span><span class="tag cyan">token cost</span>
       <span class="tag">retries</span><span class="tag">scorers</span><span class="tag">timeline</span><span class="tag good">12 tiny packages</span>
     </p>
 
@@ -211,7 +241,7 @@
   <b>packages/</b>
     pkg-01 … pkg-12/    <i># each: index.ts + index.test.ts + package.json</i>
       <i># one small pure function, one real defect, ~15 lines</i>
-      <i># pkg-07 is wall-clock flaky: 14 failures in 20 runs, measured</i>
+      <i># pkg-07 is wall-clock flaky: failed 10 of 20 consecutive runs, measured</i>
       <i># pkg-11 also has a real tsc error at index.ts(10,9)</i>
   tsconfig.json  ·  package.json  ·  README.md  ·  DEMO.md
   <b>.smithers/</b>workflows/harden-packages.tsx</div>
@@ -221,23 +251,26 @@
       <div class="node"><span>task</span>enumerate packages</div><div class="arrow">→</div>
       <div class="node"><span>parallel ×12</span>fix + test each package</div><div class="arrow">→</div>
       <div class="node loop"><span>retry</span>failures re-run, bounded</div><div class="arrow">→</div>
-      <div class="node"><span>scorer</span>llmJudge + schemaAdherence</div><div class="arrow">→</div>
+      <div class="node"><span>scorers ×3</span>schema · latency · llmJudge</div><div class="arrow">→</div>
       <div class="node ok"><span>task</span>roll-up report</div>
     </div>
 
     <h4>what the audience actually looks at</h4>
     <ul>
-      <li><strong>Tempo waterfall.</strong> Twelve parallel spans, one visibly longer with a retry nested inside it. This single screenshot is the entire argument for tracing agents.</li>
-      <li><strong>Prometheus / Grafana.</strong> Tokens and dollars per node. Point at the one node that cost 4× the rest.</li>
-      <li><code>smithers scores &lt;run&gt;</code> — quality as a number, per node, not an impression.</li>
+      <li><strong>The burst, in Grafana.</strong> <i>Node Throughput</i> and <i>Node Duration</i> on the provisioned <b>Smithers Overview</b> dashboard: twenty-seven nodes starting inside a two-minute window, the whole fan-out landing in one column of the heatmap.</li>
+      <li><strong>Cost, split by model.</strong> The dashboard ships no token panel, so query Prometheus directly: <code>sum by (model) (smithers_smithers_tokens_output_total)</code>. A real run returned <code>claude-opus-5 9920</code>, <code>gpt-5.6-terra 3091</code>, <code>gpt-5.6-luna 709</code>.</li>
+      <li><code>smithers scores &lt;run&gt;</code> — quality as a number rather than an impression. Two deterministic rows land, <code>Latency</code> and <code>Schema Adherence</code>; the <code>llmJudge</code> third scorer starts but never reports, because the run completes before the judge answers.</li>
+      <li><code>smithers inspect &lt;run&gt; --pool</code> — attempts tallied by engine and model. The same cost story with Docker down.</li>
       <li><code>smithers timeline &lt;run&gt;</code> — the fork tree, if you also demo a replay.</li>
       <li><code>smithers what &lt;run&gt;</code> — the cheap narrated recap, as the "I do not want to read events" answer.</li>
     </ul>
 
-    <div class="callout"><b>The comparison trick:</b> run the same workflow twice, once on a cheap model and once on a strong one, then put both runs on one Grafana dashboard. Cost down 6×, scorer average down 20% — now the audience is doing routing math in their heads instead of listening to you. Two pre-recorded runs, zero live risk.</div>
+    <div class="callout warn"><b>Do not promise a trace waterfall.</b> This section originally planned one, and it does not exist. Verified against a real run: with <code>SMITHERS_OTEL_ENABLED=1</code> and the OTLP endpoint set, metrics and logs reach the collector but <b>no spans reach Tempo</b> — <code>GET :3200/api/search</code> returns <code>{"traces":[]}</code> while Prometheus holds the run's metrics in full. The width of the fan-out is provable from the throughput panel and from <code>smithers inspect</code>, not from a span tree.</div>
+
+    <div class="callout"><b>The comparison trick:</b> run the same workflow twice — <code>--input '{"fixSeat":"cheap"}'</code> swaps the whole fan-out onto the cheap seat — then put both runs on one Grafana dashboard, where the token series split by <code>model</code>. Compare the two <code>report</code> grades side by side with <code>smithers scores &lt;run&gt; --node report</code>. Two pre-recorded runs, zero live risk. Do not quote a cost ratio you have not measured on the day; the point is that the trade is measurable, not that it is any particular number.</div>
 
     <h4>setup cost</h4>
-    <p><code>smithers observability --detach</code> brings up the Docker stack: Grafana on <code>:3001</code>, Prometheus on <code>:9090</code>, Tempo on <code>:3200</code>, Loki on <code>:3100</code>, and the OTLP HTTP intake on <code>:4318</code>. Launch the run with <code>OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318</code>. That stack is the one hard dependency in the whole set, so start it early and screenshot the dashboards. <code>graph</code>, <code>scores</code>, <code>timeline</code>, <code>inspect</code>, and <code>why</code> all read local state and need no Docker.</p>
+    <p><code>smithers observability --detach</code> brings up the Docker stack: Grafana on <code>:3001</code> (anonymous viewer, admin password <code>admin</code>), Prometheus on <code>:9090</code>, Tempo on <code>:3200</code>, Loki on <code>:3100</code>, and the OTLP HTTP intake on <code>:4318</code>. Loki is in the stack even though <code>smithers observability --help</code> does not mention it. Launch the run with <b>both</b> <code>SMITHERS_OTEL_ENABLED=1</code> and <code>OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318</code> — the endpoint alone exports nothing — and pass <code>--max-concurrency 12</code>, or the engine caps the fan-out at four and the throughput panel looks narrow. That stack is the one hard dependency in the whole set, so start it early and screenshot the dashboards <em>while a run is in flight</em>: <i>Active Runs</i>, <i>Active Nodes</i> and the <i>Tools</i> row are live gauges and read "No data" afterwards. <code>graph</code>, <code>scores</code>, <code>timeline</code>, <code>inspect</code>, and <code>why</code> all read local state and need no Docker.</p>
   </section>
 
   <hr />
@@ -287,7 +320,7 @@
 
     <p>Data comes from <code>createGatewayReactRoot</code> plus <code>useGatewayRun</code> / <code>useGatewayNodeOutput</code> / <code>useGatewayActions</code>. Submitting the edited spec is <code>submitSignal</code> then <code>resumeRun</code>: a signal alone does not wake a parked run, and it must carry <code>signalName</code> as well as <code>correlationKey</code> or no waiter ever matches. The workflow and the UI import both strings from one shared contract file so they cannot drift.</p>
 
-    <p>The shipped grader, <code>gradeWorkflowUiSource</code>, scores this bundle 1.0 with zero violations. No hand-rolled pills, tables, or colors.</p>
+    <p>Run against the shipped grader, <code>gradeWorkflowUiSource</code>, this bundle came back <code>{ passed: true, score: 1, violations: [] }</code>. No hand-rolled pills, tables, or colors.</p>
 
     <h4>demo beats (~2 min)</h4>
     <div class="beat"><b>0:00</b> <code>smithers ui &lt;run&gt;</code>. The spec is already drafted and waiting.</div>
@@ -328,7 +361,7 @@
     <table>
       <tr><th>repo</th><th>shows</th><th>the line</th></tr>
       <tr><td>pricing-api</td><td>approval gates</td><td>"A rejection is an input, not an abort."</td></tr>
-      <tr><td>flaky-monorepo</td><td>observability</td><td>"Twelve agents, one trace, one bill."</td></tr>
+      <tr><td>flaky-monorepo</td><td>observability</td><td>"Twelve agents, one dashboard, one bill."</td></tr>
       <tr><td>todo-cli</td><td>custom UI</td><td>"You edit the agent's plan while it waits."</td></tr>
     </table>
   </section>

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smithers 0.31.0 — Command Reference</title>
+<style>
+  :root{
+    --bg:#0B0E14; --panel:#121826; --panel2:#19212F; --line:#232C3D;
+    --fg:#E9ECF3; --dim:#98A2B6; --accent:#FF8A4C; --accent2:#5B93FF;
+    --warn:#E9C46A; --pink:#ff7b9c; --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1180px;margin:0 auto;padding:48px 28px 96px}
+  h1{font-size:30px;margin:0 0 6px;letter-spacing:-.02em}
+  h1 span{color:var(--dim);font-weight:400;font-size:18px}
+  .lede{color:var(--dim);max-width:74ch;margin:0 0 34px}
+  h2{font-size:18px;margin:40px 0 4px;letter-spacing:-.01em}
+  h2::before{content:"▎";color:var(--accent);margin-right:6px}
+  .sub{color:var(--dim);font-size:13.5px;margin:0 0 14px}
+  code,kbd{font-family:var(--mono);font-size:12.8px}
+  code{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--accent2)}
+  pre{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;margin:12px 0}
+  pre code{background:none;border:0;padding:0;color:var(--fg)}
+  pre .c{color:var(--dim)}
+  pre .k{color:var(--pink)}
+  table{width:100%;border-collapse:collapse;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:6px}
+  td{padding:8px 12px;border-top:1px solid var(--line);vertical-align:top}
+  tr:first-child td{border-top:0}
+  td:first-child{width:190px;white-space:nowrap}
+  td:first-child code{background:transparent;border:0;padding:0;color:var(--accent);font-size:13px}
+  td:last-child{color:var(--dim);font-size:13.5px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:18px 0 8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card h3{margin:0 0 6px;font-size:14px;color:var(--accent2)}
+  .card p{margin:0;color:var(--dim);font-size:13px}
+  .callout{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-left:3px solid var(--accent2);border-radius:10px;padding:14px 18px;margin:18px 0}
+  .callout strong{color:var(--accent2)}
+  .warn{border-left-color:var(--warn)} .warn strong{color:var(--warn)}
+  footer{margin-top:52px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12.5px}
+  a{color:var(--accent2)}
+  /* ---------- shared appendix nav ---------- */
+  .sx-nav {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .5rem;
+    margin: 0 0 0; padding: .5rem 1.1rem;
+    background: rgba(11,14,20,.93); backdrop-filter: blur(10px);
+    border-bottom: 1px solid #232C3D;
+    font: 500 12.5px/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  .sx-nav a { color: #98A2B6; text-decoration: none; padding: .2rem .45rem; border-radius: 5px; }
+  .sx-nav a:hover { color: #E9ECF3; background: #19212F; }
+  .sx-nav a[aria-current="page"] { color: #FF8A4C; background: rgba(255,138,76,.10); }
+  .sx-nav .sx-home { color: #E9ECF3; font-weight: 600; }
+  .sx-nav .sx-sep { color: #5B6679; }
+  .sx-nav .sx-gh { margin-left: auto; color: #62CBDA; }
+  @media (max-width: 720px) { .sx-nav .sx-gh { margin-left: 0; } }
+  @media print { .sx-nav { display: none; } }
+</style>
+</head>
+<body>
+<nav class="sx-nav" aria-label="Appendices">
+  <a class="sx-home" href="./">Smithers · Aug 2026</a>
+  <span class="sx-sep">/</span>
+  <a href="smithers-deck-2026-08.html">deck</a>
+  <a href="smithers-command-reference.html" aria-current="page">A · CLI</a>
+  <a href="human-decisions-in-workflow-uis.html">B · human decisions</a>
+  <a href="demo-runbook.html">C · runbook</a>
+  <a href="examples-brainstorm.html">D · why these demos</a>
+  <a class="sx-gh" href="https://github.com/H3xept/smithers-presentation">repo ↗</a>
+</nav>
+<div class="wrap">
+
+<h1>Smithers <span>v0.31.0 — command reference</span></h1>
+<p class="lede">Smithers is a durable control plane for long-running coding agents: workflows are TypeScript/JSX graphs that run for minutes or days, persist every finished node, and resume after a crash. The CLI is the operator surface over that runtime. Every command takes <code>--format toon|json|yaml|md|jsonl</code>, <code>--schema</code>, <code>--filter-output</code>, and the <code>--token-count</code>/<code>--token-limit</code>/<code>--token-offset</code> trio. <code>--json</code> is accepted everywhere as shorthand for <code>--format json</code>, with one wrinkle worth knowing: after <code>events</code>, <code>timeline</code>, <code>tree</code>, <code>diff</code>, <code>output</code>, <code>rewind</code>, <code>snapshots</code> and <code>restore</code> it is command-scoped and emits that command's raw JSON payload instead of the standard envelope.</p>
+
+<h2>What <code>smithers observability</code> is for</h2>
+<p class="sub">One command, two flags — it is a Docker Compose launcher, not a Smithers subsystem.</p>
+
+<div class="callout">
+<strong>Purpose:</strong> start (or tear down) a <em>local telemetry stack</em> through Docker Compose — <strong>Grafana</strong> on <code>:3001</code> (dashboards, anonymous viewer, admin password <code>admin</code>), <strong>Prometheus</strong> on <code>:9090</code> (metrics), <strong>Tempo</strong> on <code>:3200</code> (traces), <strong>Loki</strong> on <code>:3100</code> (logs — in the compose file, though <code>--help</code> does not mention it), and an <strong>OTLP Collector</strong> on <code>:4317</code>/<code>:4318</code> (ingest; Smithers exports to the HTTP port). A run only exports when you set <strong>both</strong> <code>SMITHERS_OTEL_ENABLED=1</code> and <code>OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318</code>; the service name defaults to <code>smithers</code> unless you set <code>OTEL_SERVICE_NAME</code>.
+</div>
+
+<pre><code><span class="c"># bring the stack up in the background</span>
+smithers observability --detach
+
+<span class="c"># stop and remove it</span>
+smithers observability --down</code></pre>
+
+<table>
+  <tr><td><code>--detach, -d</code></td><td>Run the containers in the background instead of attached.</td></tr>
+  <tr><td><code>--down</code></td><td>Stop and remove the observability stack.</td></tr>
+</table>
+
+<p class="sub" style="margin-top:14px">You reach for it when a run needs <em>dashboard-level proof</em> rather than a log tail: node throughput and duration across a wide fan-out, success rate, and token totals split by <code>model</code>, with links you can paste into an evidence report. It is complementary to, not a replacement for, the built-in surfaces:</p>
+
+<div class="callout warn" style="margin-top:14px"><strong>Measured caveat, v0.31.0:</strong> with OTel enabled, metrics and logs reach the collector but <em>spans do not reach Tempo</em> — <code>GET :3200/api/search</code> returns <code>{"traces":[]}</code> on a run whose metrics Prometheus holds in full. The dashboard's <em>Traces</em> row stays empty. Plan your evidence around the metric panels and <code>smithers inspect --pool</code>, not around a span waterfall. <em>Active Runs</em>, <em>Active Nodes</em> and the <em>Tools</em> row are live gauges and read <em>No data</em> once a run has finished.</div>
+
+<div class="cards">
+  <div class="card"><h3>Day-to-day</h3><p><code>ps</code>, <code>status</code>, <code>inspect</code>, <code>events</code>, <code>logs</code>, <code>why</code> — enough for almost all local operating.</p></div>
+  <div class="card"><h3>Raw metrics endpoint</h3><p><code>smithers up wf.tsx --serve --port 7331</code> exposes <code>/metrics</code> for Prometheus without the full stack — <code>--metrics</code> is already on by default with <code>--serve</code>.</p></div>
+  <div class="card"><h3>Full stack</h3><p><code>smithers observability</code> when you want dashboards, metric history, and log search retained across many runs.</p></div>
+  <div class="card"><h3>Library side</h3><p><code>smithers-orchestrator/observability</code> — OTel traces, metrics, Prometheus rendering, custom event sinks.</p></div>
+</div>
+
+<div class="callout warn"><strong>Caveat:</strong> the feature matrix marks <code>observability</code> as status <em>partial</em>, tier <em>platform</em> — <em>partial</em> meaning "the capability ships, but its feature record lists an unproved environment, provider path, or explicit limitation". Expect the tracing surface to be less polished than the run-control commands, and it requires a working Docker daemon.</div>
+
+<h2>Run a workflow</h2>
+<p class="sub">The core loop: author → render → launch → watch.</p>
+<table>
+  <tr><td><code>init</code></td><td>Install the local workflow pack into <code>.smithers/</code>; optional prompt also launches the builder.</td></tr>
+  <tr><td><code>workflow</code></td><td>Discover local workflows in <code>.smithers/workflows</code>.</td></tr>
+  <tr><td><code>make-workflow</code></td><td>Build a new workflow from a plain-English description (dispatches <code>create-workflow</code>).</td></tr>
+  <tr><td><code>graph</code></td><td>Render the workflow graph <em>without</em> executing — the dry-run / sanity check; must exit 0.</td></tr>
+  <tr><td><code>up</code></td><td>Start an execution. <code>-d</code> detached, <code>--interactive</code> for the full-screen TUI picker+monitor.</td></tr>
+  <tr><td><code>oneshot</code></td><td>Run one well-scoped goal with a strong agent in the background, optional review + live UI.</td></tr>
+  <tr><td><code>chat-create</code></td><td>Create and start a one-task auto-hijacked chat run.</td></tr>
+  <tr><td><code>starters</code></td><td>Plain-English starter workflows with copy-paste commands.</td></tr>
+  <tr><td><code>review</code></td><td>Code review + story-form HTML walkthrough for a repo or PR.</td></tr>
+  <tr><td><code>upgrade</code></td><td>Agent-assisted Smithers upgrade workflow (cheap agent first, escalate if needed).</td></tr>
+</table>
+
+<h2>Observe a run</h2>
+<p class="sub">Read-only introspection. If you can't see the run, you can't operate it.</p>
+<table>
+  <tr><td><code>ps</code></td><td>List active, paused, and recently completed runs.</td></tr>
+  <tr><td><code>status</code></td><td>Run health at a glance: verdict, node counts, agent/model mix, throughput, gating nodes.</td></tr>
+  <tr><td><code>inspect</code></td><td>Detailed run state; <code>--pool</code> tallies attempt engine/model usage.</td></tr>
+  <tr><td><code>node</code></td><td>Enriched node details for debugging retries, tool calls, and output.</td></tr>
+  <tr><td><code>events</code></td><td>Node/run lifecycle history; <code>--raw</code> for raw agent chunks and all event types.</td></tr>
+  <tr><td><code>logs</code></td><td>Tail a specific run's event log.</td></tr>
+  <tr><td><code>chat</code></td><td>Agent chat output for the latest or a specific run.</td></tr>
+  <tr><td><code>tree</code></td><td>DevTools snapshot as an XML node tree.</td></tr>
+  <tr><td><code>diff</code></td><td>Print a DiffBundle as a unified diff.</td></tr>
+  <tr><td><code>output</code></td><td>Print a node's output row.</td></tr>
+  <tr><td><code>why</code></td><td>Explain why a run is currently blocked or paused.</td></tr>
+  <tr><td><code>what</code></td><td>Cheap fast agent narrates what happened in a run/node (deterministic recap as fallback).</td></tr>
+  <tr><td><code>scores</code></td><td>Scorer results for a run.</td></tr>
+  <tr><td><code>memory</code></td><td>View/query cross-run memory facts.</td></tr>
+  <tr><td><code>usage</code></td><td>Rate-limit / subscription quota consumed per registered account.</td></tr>
+  <tr><td><code>observability</code></td><td>Local Grafana + Prometheus + Tempo + Loki + OTLP stack (above).</td></tr>
+</table>
+
+<h2>Control a run</h2>
+<p class="sub">Lifecycle, human gates, and retries.</p>
+<table>
+  <tr><td><code>pause</code></td><td>Stop scheduling, let in-flight tasks finish, park the run resumably.</td></tr>
+  <tr><td><code>cancel</code></td><td>Safely halt agents and terminate a run.</td></tr>
+  <tr><td><code>down</code></td><td>Cancel all active runs — <code>docker compose down</code> for workflows.</td></tr>
+  <tr><td><code>approve</code> / <code>deny</code></td><td>Clear a paused approval gate (auto-detects the pending node when unambiguous).</td></tr>
+  <tr><td><code>human</code></td><td>List and resolve durable human requests.</td></tr>
+  <tr><td><code>ask-human</code></td><td>From <em>inside</em> a run: raise a blocking approval request and wait for the decision.</td></tr>
+  <tr><td><code>signal</code></td><td>Deliver a durable signal to a run waiting on <code>&lt;Signal&gt;</code> / <code>&lt;WaitForEvent&gt;</code>.</td></tr>
+  <tr><td><code>retry-task</code></td><td>Retry one task inside a run, then resume the workflow.</td></tr>
+  <tr><td><code>hijack</code></td><td>Hand off the latest resumable agent session/conversation for a run.</td></tr>
+  <tr><td><code>supervise</code></td><td>Watch named stale runs and auto-resume; <code>--all</code> for a workspace sweep.</td></tr>
+  <tr><td><code>cron</code></td><td>Manage and run background schedule triggers.</td></tr>
+  <tr><td><code>alerts</code></td><td>List and manage durable alert instances.</td></tr>
+</table>
+
+<h2>Time travel &amp; durability</h2>
+<p class="sub">Every finished node is a checkpoint, so you can move backwards.</p>
+<table>
+  <tr><td><code>snapshots</code></td><td>List durability snapshots (workspace checkpoints) for a run.</td></tr>
+  <tr><td><code>timeline</code></td><td>Execution timeline for a run and its forks.</td></tr>
+  <tr><td><code>fork</code></td><td>Branch a new run from a snapshot checkpoint.</td></tr>
+  <tr><td><code>replay</code></td><td>Fork from a checkpoint <em>and</em> resume execution.</td></tr>
+  <tr><td><code>rewind</code></td><td>Rewind a run to a previous frame.</td></tr>
+  <tr><td><code>restore</code></td><td>Restore a worktree to a durability checkpoint (latest, or <code>--seq</code>).</td></tr>
+  <tr><td><code>revert</code></td><td>Revert the workspace filesystem to a previous task attempt's state.</td></tr>
+  <tr><td><code>timetravel</code></td><td>Combined: revert filesystem + reset DB state to a prior task, optionally resume.</td></tr>
+  <tr><td><code>worktree</code></td><td>Inspect and reclaim worktrees created for <code>&lt;Worktree&gt;</code> lanes.</td></tr>
+</table>
+
+<h2>UIs &amp; control plane</h2>
+<p class="sub">The Gateway owns run discovery and control — never touch the DB directly.</p>
+<table>
+  <tr><td><code>gateway</code></td><td>Serve the workspace-wide RPC/WS control plane; <code>status</code>/<code>stop</code> manage the singleton.</td></tr>
+  <tr><td><code>monitor</code></td><td>Open the Smithers Monitor: live web UI over every run (tree, events, approvals).</td></tr>
+  <tr><td><code>ui</code></td><td>Open a workflow's custom UI for a run; <code>--app</code> for the whole control-plane UI.</td></tr>
+  <tr><td><code>gui</code></td><td>Open a directory's workspace at its most recent run's workflow UI.</td></tr>
+  <tr><td><code>token</code></td><td>Issue and revoke short-lived Gateway bearer tokens.</td></tr>
+  <tr><td><code>migrate</code></td><td>Copy the legacy <code>smithers.db</code> into PGlite/Postgres and write the marker.</td></tr>
+</table>
+
+<h2>Evals, optimization &amp; tools</h2>
+<table>
+  <tr><td><code>eval</code></td><td>Run a workflow over a JSON/JSONL suite and write a regression report.</td></tr>
+  <tr><td><code>optimize</code></td><td>GEPA prompt optimization over an eval suite → optimized prompt artifact.</td></tr>
+  <tr><td><code>openapi</code></td><td>Generate AI SDK tools from OpenAPI specs.</td></tr>
+  <tr><td><code>agents</code></td><td>Inspect and register agent subscriptions and API keys.</td></tr>
+</table>
+
+<h2>Packs, docs &amp; integrations</h2>
+<table>
+  <tr><td><code>add</code> / <code>remove</code></td><td>Install / uninstall a workflow pack from GitHub, npm, or a local file.</td></tr>
+  <tr><td><code>packs</code></td><td>List and update installed packs.</td></tr>
+  <tr><td><code>eject</code></td><td>Copy a pack workflow (plus UI, prompts, libraries) into the local <code>.smithers</code> pack.</td></tr>
+  <tr><td><code>share</code></td><td>Add this project's pack to awesome-smithers and open a PR.</td></tr>
+  <tr><td><code>docs</code> / <code>docs-full</code></td><td>Print <code>llms.txt</code> / <code>llms-full.txt</code> for this CLI version.</td></tr>
+  <tr><td><code>ask</code></td><td>Ask a question about Smithers using your installed agent + the Smithers MCP server.</td></tr>
+  <tr><td><code>update</code></td><td>Check for a newer release and upgrade the install.</td></tr>
+  <tr><td><code>bug</code></td><td>File a bug report; <code>--run</code> attaches status, error, and last ~50 events (scrubbed).</td></tr>
+  <tr><td><code>mcp</code> / <code>skills</code> / <code>completions</code></td><td>Register as an MCP server, sync skill files to agents, shell completions.</td></tr>
+  <tr><td><code>claude</code> / <code>hermes</code></td><td>Harness plugins: mirror runs into <code>/workflows</code>, slash commands, approval buttons.</td></tr>
+  <tr><td><code>snapshot-hook</code></td><td>Internal PostToolUse hook requesting a Tier-1 durability snapshot.</td></tr>
+</table>
+
+<footer>
+Source: <code>smithers --help</code> and <code>smithers observability --help</code> on smithers@0.31.0, plus the bundled <code>llms-full.txt</code>. Docs: <a href="https://smithers.sh">smithers.sh</a> · Repo: <a href="https://github.com/smithersai/smithers">smithersai/smithers</a>
+</footer>
+
+</div>
+</body>
+</html>

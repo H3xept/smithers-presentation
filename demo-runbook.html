@@ -71,7 +71,35 @@
   .toc a:hover { color:var(--ink); border-color:var(--ember); }
   footer { color:var(--ink-faint); font-family:var(--mono); font-size:.73rem; border-top:1px solid var(--line); padding-top:1.3rem; margin-top:3rem; }
   .num { font-family:var(--mono); color:var(--ink-faint); font-size:.8em; margin-right:.5rem; }
+  /* ---------- shared appendix nav ---------- */
+  .sx-nav {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .5rem;
+    margin: 0 0 0; padding: .5rem 1.1rem;
+    background: rgba(11,14,20,.93); backdrop-filter: blur(10px);
+    border-bottom: 1px solid #232C3D;
+    font: 500 12.5px/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  .sx-nav a { color: #98A2B6; text-decoration: none; padding: .2rem .45rem; border-radius: 5px; }
+  .sx-nav a:hover { color: #E9ECF3; background: #19212F; }
+  .sx-nav a[aria-current="page"] { color: #FF8A4C; background: rgba(255,138,76,.10); }
+  .sx-nav .sx-home { color: #E9ECF3; font-weight: 600; }
+  .sx-nav .sx-sep { color: #5B6679; }
+  .sx-nav .sx-gh { margin-left: auto; color: #62CBDA; }
+  @media (max-width: 720px) { .sx-nav .sx-gh { margin-left: 0; } }
+  @media print { .sx-nav { display: none; } }
 </style>
+
+<nav class="sx-nav" aria-label="Appendices">
+  <a class="sx-home" href="./">Smithers · Aug 2026</a>
+  <span class="sx-sep">/</span>
+  <a href="smithers-deck-2026-08.html">deck</a>
+  <a href="smithers-command-reference.html">A · CLI</a>
+  <a href="human-decisions-in-workflow-uis.html">B · human decisions</a>
+  <a href="demo-runbook.html" aria-current="page">C · runbook</a>
+  <a href="examples-brainstorm.html">D · why these demos</a>
+  <a class="sx-gh" href="https://github.com/H3xept/smithers-presentation">repo ↗</a>
+</nav>
 
 <div class="wrap">
 
@@ -85,12 +113,28 @@
     <a href="#tabs">terminal layout</a>
     <a href="#d1">demo 1 · the gate</a>
     <a href="#d2">demo 2 · the UI</a>
-    <a href="#d3">demo 3 · the trace</a>
+    <a href="#d3">demo 3 · the bill</a>
     <a href="#fail">failure playbook</a>
     <a href="#reset">reset</a>
   </div>
 
   <hr />
+  <section id="live">
+    <p class="eyebrow good">Rehearsal state · 12 Aug 2026</p>
+    <h2>Three finished runs are on disk</h2>
+    <p>All three ran to completion and were verified against the rows they wrote. <strong>None of them is parked any more</strong> — the two human gates were driven to a decision during verification, so what is on disk is read-back material, not stage material. Rehearse the read-back commands against these, and re-park the two interactive runs before you speak.</p>
+    <table>
+      <tr><th>repo</th><th>run id</th><th>state on disk</th></tr>
+      <tr><td><code>examples/pricing-api</code></td><td><code>run-1786513356216</code></td><td>finished · 7 nodes · 18m 13s · gate denied, then approved</td></tr>
+      <tr><td><code>examples/todo-cli</code></td><td><code>run-1786513356304</code></td><td>finished · 4 nodes · 23m 43s · 19m 44s of it parked on <code>await-edit</code></td></tr>
+      <tr><td><code>examples/flaky-monorepo</code></td><td><code>run-1786513376726</code></td><td>finished · 27 nodes · 2m 21s · 100% success</td></tr>
+    </table>
+    <p class="note">These three are exactly what slide 17 reads back: <code>smithers timeline &lt;run&gt;</code>, <code>smithers inspect &lt;run&gt;</code>, <code>smithers scores &lt;run&gt; --node report</code> and <code>smithers what &lt;run&gt;</code> all work offline against these rows, and the 19m 44s park in the todo-cli run is the zero-cost-wait argument with a timestamp on it. The flaky-monorepo fixture has been reset to failing on purpose; that finished run's metrics and scores survive the reset, which is the point.</p>
+    <div class="callout warn"><b>Before the talk you must re-launch two runs</b> — <code>pricing-api</code> up to its gate and <code>todo-cli</code> up to its spec editor. Each takes about ten minutes of unattended agent time, so start them while you set up the room. The pre-flight section below is the command order.</div>
+  </section>
+
+  <hr />
+
 
   <section id="why">
     <p class="eyebrow">The shape</p>
@@ -101,7 +145,7 @@
       <tr><th>repo</th><th>agent phase (pre-warm this)</th><th>on stage</th><th>live time</th></tr>
       <tr><td>pricing-api</td><td><code>assess</code> + <code>propose</code>, then it parks on the gate</td><td>deny, resume, approve</td><td>~2:00</td></tr>
       <tr><td>todo-cli</td><td><code>draft-spec</code>, then it parks on <code>await-edit</code></td><td>edit the spec, submit, watch</td><td>~2:30</td></tr>
-      <tr><td>flaky-monorepo</td><td>the whole run, twelve lanes, no park</td><td>Grafana waterfall + <code>scores</code></td><td>~1:30, or Q&amp;A only</td></tr>
+      <tr><td>flaky-monorepo</td><td>the whole run, twelve lanes, no park (measured 2m 21s)</td><td>Grafana throughput + token query + <code>scores</code></td><td>~1:30, or Q&amp;A only</td></tr>
     </table>
 
     <div class="callout"><b>Why this works and a live launch does not:</b> a parked run is a database row, not a pinned process. You can park it an hour before you speak, close the laptop, and the gate is still waiting when you open it. The pre-warm is not a cheat — it is the feature.</div>
@@ -109,9 +153,9 @@
     <h4>recommended slotting against the deck</h4>
     <table>
       <tr><th>slide</th><th>clock</th><th>what runs</th></tr>
-      <tr><td>07</td><td>03:30</td><td><strong>Demo 1 — pricing-api.</strong> The deny path. Best argument in the talk.</td></tr>
-      <tr><td>09</td><td>05:00</td><td><strong>Demo 2 — todo-cli.</strong> <code>smithers graph</code> first, then the custom UI.</td></tr>
-      <tr><td>24</td><td>Q&amp;A</td><td><strong>Demo 3 — flaky-monorepo.</strong> Only if someone asks about cost or observability. Otherwise show the Grafana screenshot on the appendix slide.</td></tr>
+      <tr><td>14</td><td>03:30</td><td><strong>Demo 1 — pricing-api.</strong> The deny path, on the human-input slide. Best argument in the talk.</td></tr>
+      <tr><td>16</td><td>05:00</td><td><strong>Demo 2 — todo-cli.</strong> <code>smithers graph</code> first, then the custom UI on the custom-UI slide.</td></tr>
+      <tr><td>26</td><td>Q&amp;A</td><td><strong>Demo 3 — flaky-monorepo.</strong> Only if someone asks about cost or observability. Otherwise show the Grafana screenshot on the appendix slide.</td></tr>
     </table>
     <p>If you only get one demo: run <strong>demo 2</strong>. Editing an agent's plan mid-run is the thing nobody in the room has seen before.</p>
   </section>
@@ -123,12 +167,12 @@
     <h2>The timeline before you speak</h2>
 
     <div class="beat"><b>T-40</b> <code>smithers oneshot --status</code> must print at least one usable agent. If it does not, no demo runs. Fix credentials first.</div>
-    <div class="beat"><b>T-35</b> Start the long one. <code>cd examples/flaky-monorepo</code>, then <code>smithers observability --detach</code> and launch the run (stage 2 in its <code>DEMO.md</code>). Twelve lanes take a while; it must be finished before you start talking.</div>
+    <div class="beat"><b>T-35</b> Start the long one. <code>cd examples/flaky-monorepo</code>, then <code>smithers observability --detach</code> and launch the run (stage 2 in its <code>DEMO.md</code>). Measured at 2m 21s for 27 nodes, but Docker image pulls on a cold machine take far longer than the run does.</div>
     <div class="beat"><b>T-20</b> Park demo 1. <code>cd examples/pricing-api</code> → <code>smithers up .smithers/workflows/price-change.tsx --detach</code>. Note the run id.</div>
     <div class="beat"><b>T-20</b> Park demo 2. <code>cd examples/todo-cli</code> → <code>smithers up .smithers/workflows/spec-then-build.tsx -d</code>. Note the run id.</div>
     <div class="beat"><b>T-10</b> Confirm both parked: <code>smithers why &lt;run-id&gt;</code> in each repo. Demo 1 must name <code>gate</code>. Demo 2 must name <code>await-edit</code>.</div>
     <div class="beat"><b>T-8</b> Open <code>smithers ui</code> in the todo-cli tab. Leave the browser tab open with the spec already loaded. Do not submit it.</div>
-    <div class="beat"><b>T-5</b> Screenshot the Grafana trace waterfall and the token panel. That screenshot is your Docker insurance.</div>
+    <div class="beat"><b>T-5</b> Screenshot the <b>Smithers Overview</b> dashboard — the <i>Node Throughput</i> and <i>Node Duration</i> panels — plus the Prometheus token query. Those two images are your Docker insurance. There is no trace waterfall to screenshot.</div>
     <div class="beat"><b>T-2</b> Font size up. Close every other browser tab. <code>clear</code> all three terminals.</div>
 
     <div class="callout warn"><b>The one thing to write down:</b> both run ids, on paper, next to you. Every stage command needs one, and <code>smithers ps</code> in the wrong directory will not find it.</div>
@@ -196,9 +240,10 @@ smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resum
 
     <h4>beat 1 — the graph, in one second</h4>
 <pre><code>smithers graph .smithers/workflows/spec-then-build.tsx</code></pre>
-<pre class="say"><code>"Four nodes. Draft a spec, wait for a human, implement, test.
- That rendered without calling a model — the graph is a contract
- you can check before you spend a token."</code></pre>
+<pre class="say"><code>"Draft a spec, then wait for a human. That is the first frame, and it
+ rendered without calling a model — the graph is a contract you can
+ check before you spend a token."</code></pre>
+    <p class="note">Verified: <code>graph</code> renders frame zero, so exactly two nodes appear — <code>draft-spec</code> and the <code>await-edit</code> wait node, with its <code>event</code> and <code>correlationId</code> printed as props. <code>implement</code> and <code>test</code> are gated on upstream output and materialise once it exists. Say "the first frame", not "four nodes"; somebody in the room will count.</p>
 
     <h4>beat 2 — the UI ships with the workflow</h4>
     <p>Switch to the browser tab you opened at T-8. If you need it again: <code>smithers ui &lt;run-id&gt;</code>.</p>
@@ -239,8 +284,8 @@ smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resum
 
   <section id="d3">
     <p class="eyebrow cyan">Demo 3 · appendix slide 24 · tab 3 + Grafana</p>
-    <h2><span class="num">03</span>flaky-monorepo — twelve spans and one liar</h2>
-    <p><span class="tag cyan">1.5 minutes</span><span class="tag warn">needs Docker</span><span class="tag">run finished before the talk</span></p>
+    <h2><span class="num">03</span>flaky-monorepo — twelve agents, one bill</h2>
+    <p><span class="tag cyan">1.5 minutes</span><span class="tag warn">needs Docker</span><span class="tag good">run verified: 27 nodes, 2m 21s</span></p>
 
     <p>Keep this one for questions about cost, model choice, or "how do you know it worked". It is the weakest live demo — the run takes too long and it depends on Docker — and the strongest answer to a skeptical question.</p>
 
@@ -250,20 +295,21 @@ smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resum
  correct looks like. One of them also fails to type-check, and the test
  suite cannot see that."</code></pre>
 
-    <h4>beat 2 — the waterfall</h4>
-    <p>Grafana at <code>localhost:3001</code>, Tempo data source, search the trace by service name <code>harden-packages-strong</code>. Point at three things, in this order:</p>
+    <h4>beat 2 — the burst and the bill</h4>
+    <p>Grafana at <code>localhost:3001</code>, the <b>Smithers Overview</b> dashboard. Point at two panels, then one Prometheus query:</p>
     <ol>
-      <li><strong>Twelve spans, one start time.</strong> That is what fan-out looks like.</li>
-      <li><strong>One lane with a nested retry.</strong> Only <code>pkg-07</code> has a second fix/verify pair, because it races the wall clock and lost. Eleven packages did not pay for one flaky test.</li>
-      <li><strong>Tokens by model.</strong> Cost is a dimension of the dashboard, not a spreadsheet on the side.</li>
+      <li><strong>Node Throughput and Node Duration.</strong> Twenty-seven nodes start inside a two-minute window, and the heatmap shows the whole fan-out landing in one column. <em>Node Success Rate</em> reads 100%.</li>
+      <li><strong>Tokens by model</strong>, at <code>localhost:9090</code>: <code>sum by (model) (smithers_smithers_tokens_output_total)</code>. A verified run returned <code>claude-opus-5 9920</code>, <code>gpt-5.6-terra 3091</code>, <code>gpt-5.6-luna 709</code>. Cost is a dimension you query, not a spreadsheet on the side.</li>
     </ol>
+    <div class="callout bad"><b>Do not promise a span waterfall.</b> Verified on this machine: with <code>SMITHERS_OTEL_ENABLED=1</code> and the OTLP endpoint set, metrics and logs reach the collector but <b>no spans reach Tempo</b> — <code>GET :3200/api/search</code> returns <code>{"traces":[]}</code>. The dashboard's <i>Traces</i> row stays empty. Also, <i>Active Runs</i>, <i>Active Nodes</i>, and the <i>Tools</i> row are live gauges and read "No data" once the run has finished.</div>
 
     <h4>beat 3 — the grade, and the trade</h4>
-<pre><code>smithers scores &lt;run&gt; --node report
+<pre><code>smithers scores &lt;run&gt;
 smithers inspect &lt;run&gt; --pool</code></pre>
 <pre class="say"><code>"The run grades itself, and the grade is a row you can query later.
  inspect --pool tallies attempts by model, so cheap-versus-strong is a
  measurement rather than an opinion — and that one works with Docker down."</code></pre>
+    <p class="note">Verified output: <code>scores</code> returns <code>Latency 1.00</code> and <code>Schema Adherence 1.00</code>; the third scorer, the <code>llmJudge</code> named <i>Roll-up Accuracy</i>, starts but never reports, because the run completes before the judge answers. Say "two scorers", not "three". <code>--pool</code> returns <code>codex/gpt-5.6-terra x13, claude-code/claude-opus-5 x12, codex/gpt-5.6-luna x1, codex/gpt-5.6-sol x1</code>.</p>
 
     <div class="callout good"><b>The comparison, if the question deserves it:</b> the same workflow takes <code>--input '{"fixSeat":"cheap"}'</code> and swaps the whole fan-out onto the cheap seat. Two runs, one dashboard, token panels split by <code>model</code>. Do this before the talk, never during it.</div>
   </section>
@@ -281,7 +327,7 @@ smithers inspect &lt;run&gt; --pool</code></pre>
       <tr><td>Deny seems to kill the run</td><td>You denied a different gate, or resumed from the wrong file path.</td><td><code>smithers timeline &lt;run&gt;</code>, then resume with the exact workflow path and <code>--run-id</code>.</td></tr>
       <tr><td>Run parked after a signal</td><td>Signal name and correlation id must <em>both</em> match.</td><td>Re-send with <code>--correlation spec-then-build-edit</code>, then resume.</td></tr>
       <tr><td>UI is blank</td><td>Gateway not up, or no run for that workflow.</td><td>Re-run <code>smithers ui &lt;run-id&gt;</code>; it starts a Gateway itself. Fall back to <code>smithers monitor &lt;run-id&gt;</code>.</td></tr>
-      <tr><td>Grafana empty</td><td>Run launched without the OTLP endpoint set.</td><td>Show the screenshot. Pivot to <code>smithers inspect --pool</code> and <code>scores</code>.</td></tr>
+      <tr><td>Grafana panels read "No data"</td><td>Expected once a run finishes: <i>Active Runs</i>, <i>Active Nodes</i>, and the <i>Tools</i> row are live gauges. The <i>Traces</i> row is always empty — spans do not reach Tempo.</td><td>Stay on <i>Node Throughput</i>, <i>Node Duration</i>, <i>Node Success Rate</i>, and the Prometheus token query. Or pivot to <code>smithers inspect --pool</code> and <code>scores</code>.</td></tr>
       <tr><td>Agent errors mid-demo</td><td>Rate limit or credential.</td><td>Do not debug on stage. <code>smithers timeline</code> on a finished run tells the same story.</td></tr>
       <tr><td>Network dies entirely</td><td>—</td><td><code>graph</code>, <code>ps</code>, <code>why</code>, <code>timeline</code>, <code>inspect</code>, <code>scores</code> all read local state. Run the talk from those.</td></tr>
     </table>
@@ -300,7 +346,8 @@ smithers inspect &lt;run&gt; --pool</code></pre>
 git checkout -- examples/pricing-api examples/todo-cli
 
 cd examples/flaky-monorepo && smithers observability --down
-bun test packages        # still 11 or 12 failures; the fixture is unchanged</code></pre>
+git checkout -- examples/flaky-monorepo/packages   # the run fixes 11 of 12 packages
+bun test packages        # back to 10 pass / 12 fail, plus the one tsc error</code></pre>
     <div class="callout good"><b>Both repos are tracked in git,</b> so one <code>git checkout</code> restores the fixture. Commit before you rehearse, and the reset is a single command between run-throughs.</div>
   </section>
 

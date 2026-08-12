@@ -212,7 +212,35 @@
     padding: .1rem .55rem; margin-left: .4rem; vertical-align: 1px;
   }
   .chip.gap { color: var(--warn); border-color: var(--warn); }
+  /* ---------- shared appendix nav ---------- */
+  .sx-nav {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .5rem;
+    margin: 0 0 0; padding: .5rem 1.1rem;
+    background: rgba(11,14,20,.93); backdrop-filter: blur(10px);
+    border-bottom: 1px solid #232C3D;
+    font: 500 12.5px/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  .sx-nav a { color: #98A2B6; text-decoration: none; padding: .2rem .45rem; border-radius: 5px; }
+  .sx-nav a:hover { color: #E9ECF3; background: #19212F; }
+  .sx-nav a[aria-current="page"] { color: #FF8A4C; background: rgba(255,138,76,.10); }
+  .sx-nav .sx-home { color: #E9ECF3; font-weight: 600; }
+  .sx-nav .sx-sep { color: #5B6679; }
+  .sx-nav .sx-gh { margin-left: auto; color: #62CBDA; }
+  @media (max-width: 720px) { .sx-nav .sx-gh { margin-left: 0; } }
+  @media print { .sx-nav { display: none; } }
 </style>
+
+<nav class="sx-nav" aria-label="Appendices">
+  <a class="sx-home" href="./">Smithers · Aug 2026</a>
+  <span class="sx-sep">/</span>
+  <a href="smithers-deck-2026-08.html">deck</a>
+  <a href="smithers-command-reference.html">A · CLI</a>
+  <a href="human-decisions-in-workflow-uis.html" aria-current="page">B · human decisions</a>
+  <a href="demo-runbook.html">C · runbook</a>
+  <a href="examples-brainstorm.html">D · why these demos</a>
+  <a class="sx-gh" href="https://github.com/H3xept/smithers-presentation">repo ↗</a>
+</nav>
 
 <div class="wrap">
 
@@ -247,7 +275,7 @@
   </table>
 
   <div class="flow">
-    <svg class="flowsvg" viewBox="0 0 900 250" role="img" aria-label="Data flow: the Approval node persists a pending row; the Gateway exposes it through listApprovals and submitApproval; the CLI, the custom UI and the monitor are three interchangeable clients; the decision row unblocks dependents on the next frame.">
+    <svg class="flowsvg" viewBox="0 0 900 250" role="img" aria-label="Data flow: the Approval node persists a pending row; the Gateway exposes it through listApprovals and submitApproval; the CLI, the custom UI and the monitor are three interchangeable clients; the decision row persists, the run is resumed, and dependents unblock on the next frame.">
       <text x="24" y="26" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1.6">THE GRAPH</text>
       <rect x="24" y="38" width="200" height="52" rx="4" fill="#121826" stroke="#5B93FF" stroke-width="1.6"></rect>
       <text x="124" y="60" text-anchor="middle" fill="#5B93FF" font-family="ui-monospace,monospace" font-size="12.5">&lt;Approval id="ship"&gt;</text>
@@ -291,7 +319,7 @@
 
       <path d="M124 166 L124 214 L64 214" stroke="#6FD08C" stroke-width="1.5" stroke-dasharray="4 4" fill="none"></path>
       <path d="M70 210 L62 214 L70 218" fill="#6FD08C"></path>
-      <text x="66" y="234" fill="#6FD08C" font-family="ui-monospace,monospace" font-size="10.5">next frame reads the decision row → dependents unblock</text>
+      <text x="66" y="234" fill="#6FD08C" font-family="ui-monospace,monospace" font-size="10.5">decision row persists → resume the run → dependents unblock</text>
     </svg>
   </div>
 
@@ -359,7 +387,9 @@
   ))
 }</code></pre>
 
-  <p><code>useGatewayApprovals</code> re-pulls when a run reaches waiting-approval and again after a <code>submitApproval</code>, so the queue empties itself. Over WebSocket, <code>submitApproval</code> also auto-subscribes the connection to the affected <code>runId</code>.</p>
+  <p><code>useGatewayApprovals</code> re-pulls when a run reaches waiting-approval, and again after a <code>submitApproval</code> invalidates the collection — so the pending list is self-maintaining. The <em>queue</em> only drains once the run is resumed and the next gate is reached; the re-pull reflects that state, it does not cause it. Over WebSocket, <code>submitApproval</code> also auto-subscribes the connection to the affected <code>runId</code>.</p>
+
+  <p class="callout warn"><strong>Writing the decision is not the same as restarting the run.</strong> <code>submitApproval</code> persists the row; if the owning process has exited — which is the whole point of a durable gate — the run stays parked and must be resumed. From a UI that is <code>useGatewayActions().resumeRun({ runId })</code> right after the submit; from a terminal it is <code>smithers up &lt;workflow&gt; --run-id &lt;run&gt; --resume true</code>. The runtime names this state explicitly: <code>smithers inspect</code> reports <code>runState.blocked.kind === "approval-decided-resume-required"</code> for a decided-but-detached gate, and <code>smithers why</code> prints the exact unblock command.</p>
 
   <h2 id="s3"><span class="n">03</span>The exact payloads — and the two gotchas</h2>
 
@@ -378,7 +408,7 @@
   <div class="box gotcha">
     <span class="t">Gotcha 1 · options reach the UI, arbitrary metadata does not</span>
     <p><code>options</code> <strong>are</strong> delivered — the Gateway parses them out of the stored request into the approval record, which is how a select or rank UI renders its choices at all. What the typed <code>GatewayApprovalSummary</code> omits is your free-form <code>request.metadata</code>: the hook hands you <code>requestTitle</code> and <code>requestSummary</code> and nothing else. (The MCP <code>list_pending_approvals</code> tool does return the full <code>request</code> as <code>unknown</code>, so the data is on disk — it is the React hook's shape that narrows it.)</p>
-    <p><strong>Design consequence:</strong> use <code>options</code> for the choosable keys, and put the <em>rich</em> per-item context — diffs, ticket bodies, risk — in the <em>upstream task's output</em>, read with <code>useGatewayNodeOutput(runId, nodeId)</code>. Join the two on the option key. That keeps the payload typed by a Zod schema and persisted as a row, which free-form metadata would be neither.</p>
+    <p><strong>Design consequence:</strong> use <code>options</code> for the choosable keys, and put the <em>rich</em> per-item context — diffs, ticket bodies, risk — in the <em>upstream task's output</em>, read with <code>useGatewayNodeOutput({ runId, nodeId })</code> (one object parameter, never positional). Join the two on the option key. That keeps the payload typed by a Zod schema and persisted as a row, which free-form metadata would be neither.</p>
   </div>
 
   <div class="box gotcha">
@@ -401,7 +431,7 @@
       <tr>
         <td><code>&lt;WaitForEvent&gt;</code> / <code>&lt;Signal&gt;</code></td>
         <td>an arbitrary JSON <code>payload</code></td>
-        <td><strong>Yes</strong> — <code>submitSignal({ runId, correlationKey, payload })</code>, <code>payload</code> is unconstrained. <span class="chip">verified</span></td>
+        <td><strong>Yes</strong> — <code>submitSignal({ runId, signalName, correlationKey, payload })</code>, <code>payload</code> is unconstrained. <span class="chip">verified</span></td>
       </tr>
       <tr>
         <td><code>&lt;HumanTask&gt;</code></td>
@@ -431,17 +461,19 @@
     </div>
     <div>
       <p class="file">.smithers/ui/triage.tsx</p>
-<pre><code><span class="kw">const</span> { submitSignal } = <span class="fn">useGatewayActions</span>()
+<pre><code><span class="kw">const</span> { submitSignal, resumeRun } = <span class="fn">useGatewayActions</span>()
 
 <span class="fn">submitSignal</span>({
   runId,
-  correlationKey: <span class="str">"triage-choice"</span>,
+  signalName: <span class="str">"triage-choice"</span>,     <span class="com">// must equal the node's `event`</span>
+  correlationKey: <span class="str">"triage-choice"</span>, <span class="com">// must equal its `correlationId`</span>
   payload: { keys: checked },
-})</code></pre>
+})
+<span class="kw">await</span> <span class="fn">resumeRun</span>({ runId })          <span class="com">// the signal fills the row; this wakes the run</span></code></pre>
     </div>
   </div>
 
-  <p class="callout warn">The <code>correlationKey</code> you send must equal the node's <code>correlationId</code>. The Gateway enforces the match, so a typo is a rejected write rather than a silently lost decision.</p>
+  <p class="callout warn"><strong>Send both keys, and expect no error if you get them wrong.</strong> A wait node resolves only when the signal <em>name</em> matches its <code>event</code> <em>and</em> the correlation key matches its <code>correlationId</code>. <code>signalName</code> is optional in the RPC signature and the Gateway defaults it to the <code>correlationKey</code> — which is why this example works at all, and why it breaks the moment the two strings differ, as they do in <code>examples/todo-cli</code> (<code>event="spec.edited"</code>, <code>correlationId="spec-then-build-edit"</code>). A mismatch is not a rejected write: the signal is delivered, no waiter matches, and the run sits parked looking perfectly healthy. Import both strings from one shared contract file, the way <code>.smithers/ui/spec-then-build-contract.ts</code> does.</p>
 
   <h2 id="s4b"><span class="n">04b</span>Multi-select: yes, via <code>rank</code></h2>
 
@@ -534,9 +566,10 @@
     <ol>
       <li><code>classify</code> finishes and persists <code>outputs.tickets</code>.</li>
       <li><code>&lt;Approval id="triage-approve"&gt;</code> mounts, writes a pending row, parks the lane. The process may exit.</li>
-      <li>The tab at <code>/workflows/triage?runId=…</code> sees the gate via <code>useGatewayApprovals</code>, and renders the tickets via <code>useGatewayNodeOutput(runId, "classify")</code>.</li>
+      <li>The tab at <code>/workflows/triage?runId=…</code> sees the gate via <code>useGatewayApprovals</code>, and renders the tickets via <code>useGatewayNodeOutput({ runId, nodeId: "classify" })</code>.</li>
       <li>A human clicks Approve. <code>submitApproval</code> writes the decision row.</li>
-      <li>The next frame reads it; <code>fix</code>, which <code>needs</code> the gate, joins the ready set.</li>
+      <li>The UI calls <code>resumeRun({ runId })</code>, because the process that parked the lane may be long gone.</li>
+      <li>The next frame reads the decision; <code>fix</code>, which <code>needs</code> the gate, joins the ready set.</li>
     </ol>
   </div>
 

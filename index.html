@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smithers — durable graphs for long-running agents · talk + appendices</title>
+<meta name="description" content="A ten-minute talk on Smithers, a durable control plane for long-running coding agents — plus four appendices: the CLI map, how human decisions reach a workflow UI, the presenter runbook, and why these three demos." />
+
+<style>
+  :root {
+    --ground:   #0B0E14;
+    --ground-2: #121826;
+    --ground-3: #19212F;
+    --line:     #232C3D;
+    --ink:      #E9ECF3;
+    --ink-dim:  #98A2B6;
+    --ink-faint:#5B6679;
+    --ember:    #FF8A4C;
+    --cyan:     #62CBDA;
+    --smith:    #5B93FF;
+    --good:     #6FD08C;
+    --warn:     #E9C46A;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 16px/1.62 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 62rem; margin: 0 auto; padding: 4.5rem 1.6rem 7rem; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 1rem;
+  }
+  h1 {
+    font-size: clamp(2rem, 5.2vw, 3.15rem); line-height: 1.06;
+    letter-spacing: -.03em; font-weight: 620; margin: 0 0 1.1rem;
+  }
+  h1 span { color: var(--ember); }
+  .lede { font-size: 1.12rem; color: var(--ink-dim); max-width: 46rem; margin: 0 0 2rem; }
+  .lede strong { color: var(--ink); font-weight: 560; }
+
+  h2 {
+    font-size: 1.06rem; font-weight: 600; letter-spacing: -.01em;
+    margin: 3.4rem 0 .3rem;
+  }
+  h2::before { content: "▎"; color: var(--ember); margin-right: .35rem; }
+  .sub { color: var(--ink-dim); font-size: .92rem; margin: 0 0 1.3rem; max-width: 46rem; }
+
+  a { color: var(--smith); }
+
+  .hero {
+    display: block; text-decoration: none; color: inherit;
+    background: linear-gradient(160deg, #16202f, var(--ground-2));
+    border: 1px solid var(--line); border-left: 3px solid var(--ember);
+    border-radius: 12px; padding: 1.5rem 1.7rem; margin: 0 0 2.6rem;
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .hero:hover { border-color: var(--ember); transform: translateY(-1px); }
+  .hero .k { font-family: var(--mono); font-size: .68rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ember); }
+  .hero h3 { margin: .5rem 0 .4rem; font-size: 1.38rem; letter-spacing: -.02em; font-weight: 600; }
+  .hero p { margin: 0; color: var(--ink-dim); font-size: .95rem; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; }
+  .card {
+    display: block; text-decoration: none; color: inherit;
+    background: var(--ground-2); border: 1px solid var(--line); border-radius: 11px;
+    padding: 1.25rem 1.35rem;
+    transition: border-color .15s ease, transform .15s ease, background .15s ease;
+  }
+  .card:hover { border-color: var(--smith); background: var(--ground-3); transform: translateY(-1px); }
+  .card .k { font-family: var(--mono); font-size: .68rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-faint); }
+  .card h3 { margin: .45rem 0 .45rem; font-size: 1.06rem; letter-spacing: -.01em; font-weight: 600; }
+  .card p { margin: 0 0 .8rem; color: var(--ink-dim); font-size: .9rem; }
+  .card .why { margin: 0; color: var(--ink-faint); font-size: .82rem; font-style: italic; }
+  .card.b:hover { border-color: var(--cyan); }
+  .card.c:hover { border-color: var(--ember); }
+  .card.d:hover { border-color: var(--good); }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 .6rem; font-size: .9rem; }
+  th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+  }
+  td:first-child { color: var(--ink); white-space: nowrap; }
+  td:last-child { color: var(--ink-dim); }
+
+  code {
+    font-family: var(--mono); font-size: .86em;
+    background: var(--ground-3); border: 1px solid var(--line);
+    border-radius: 5px; padding: .05rem .3rem; color: var(--cyan);
+  }
+
+  .callout {
+    border: 1px solid var(--line); border-left: 3px solid var(--good);
+    background: rgba(111,208,140,.05); border-radius: 9px;
+    padding: 1rem 1.2rem; margin: 1.4rem 0 0; font-size: .92rem; color: var(--ink-dim);
+  }
+  .callout b { color: var(--good); }
+
+  footer {
+    margin-top: 4.5rem; padding-top: 1.3rem; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: .74rem; line-height: 1.8; color: var(--ink-faint);
+  }
+  footer a { color: var(--cyan); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  /* ---------- shared appendix nav ---------- */
+  .sx-nav {
+    position: sticky; top: 0; z-index: 99;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .5rem;
+    margin: 0 0 0; padding: .5rem 1.1rem;
+    background: rgba(11,14,20,.93); backdrop-filter: blur(10px);
+    border-bottom: 1px solid #232C3D;
+    font: 500 12.5px/1.45 ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  .sx-nav a { color: #98A2B6; text-decoration: none; padding: .2rem .45rem; border-radius: 5px; }
+  .sx-nav a:hover { color: #E9ECF3; background: #19212F; }
+  .sx-nav a[aria-current="page"] { color: #FF8A4C; background: rgba(255,138,76,.10); }
+  .sx-nav .sx-home { color: #E9ECF3; font-weight: 600; }
+  .sx-nav .sx-sep { color: #5B6679; }
+  .sx-nav .sx-gh { margin-left: auto; color: #62CBDA; }
+  @media (max-width: 720px) { .sx-nav .sx-gh { margin-left: 0; } }
+  @media print { .sx-nav { display: none; } }
+</style>
+
+<nav class="sx-nav" aria-label="Appendices">
+  <a class="sx-home" href="./" aria-current="page">Smithers · Aug 2026</a>
+  <span class="sx-sep">/</span>
+  <a href="smithers-deck-2026-08.html">deck</a>
+  <a href="smithers-command-reference.html">A · CLI</a>
+  <a href="human-decisions-in-workflow-uis.html">B · human decisions</a>
+  <a href="demo-runbook.html">C · runbook</a>
+  <a href="examples-brainstorm.html">D · why these demos</a>
+  <a class="sx-gh" href="https://github.com/H3xept/smithers-presentation">repo ↗</a>
+</nav>
+
+<div class="wrap">
+
+  <p class="eyebrow">Talk · August 2026</p>
+  <h1>Durable graphs for<br /><span>long-running agents</span>.</h1>
+  <p class="lede">A ten-minute talk on <strong>Smithers</strong> — a durable control plane for coding agents, where a workflow is a TypeScript graph that runs for minutes or days, persists every finished node, and survives the process that started it. The talk is short on purpose. Everything it had to cut lives below.</p>
+
+  <a class="hero" href="smithers-deck-2026-08.html">
+    <span class="k">The deck</span>
+    <h3>Smithers — durable graphs for long-running agents</h3>
+    <p>28 slides — 24 in the talk, four appendices behind them. Arrow keys to move, <code>p</code> for presenter notes, <code>c</code> for the comment drawer. Best read after the talk, or instead of it.</p>
+  </a>
+
+  <h2>Appendices</h2>
+  <p class="sub">Four documents, each answering one question the talk raises and does not have time to finish. They are written to be re-read, not projected.</p>
+
+  <div class="cards">
+
+    <a class="card a" href="smithers-command-reference.html">
+      <span class="k">Appendix A</span>
+      <h3>The CLI, one page</h3>
+      <p>Every <code>smithers</code> command in v0.31.0, grouped by what you are trying to do: run a workflow, observe it, control it, move backwards through it. Plus what <code>smithers observability</code> actually starts, and where its edges are.</p>
+      <p class="why">Read this when you want to know whether the thing you need already exists.</p>
+    </a>
+
+    <a class="card b" href="human-decisions-in-workflow-uis.html">
+      <span class="k">Appendix B</span>
+      <h3>Human decisions in workflow UIs</h3>
+      <p>An approval gate renders nothing — it persists a row and parks the run. This is how that row reaches a browser: the two RPC methods, the exact payloads, why <code>&lt;Approval&gt;</code> is a three-shape funnel rather than a form, and how to get a genuinely arbitrary payload back out of a human.</p>
+      <p class="why">Read this before you build a UI on top of a gate.</p>
+    </a>
+
+    <a class="card c" href="demo-runbook.html">
+      <span class="k">Appendix C</span>
+      <h3>The presenter runbook</h3>
+      <p>How the three live demos were actually staged: what to pre-warm, what to type, what to say, and — the useful part — what does not work. Every measured caveat is in here, including the one that killed a planned slide.</p>
+      <p class="why">Read this if you want to run the same demos, or if you enjoy watching a demo get de-risked.</p>
+    </a>
+
+    <a class="card d" href="examples-brainstorm.html">
+      <span class="k">Appendix D</span>
+      <h3>Why these three demos</h3>
+      <p>The design pass behind the example repos: the constraint that each demo must produce work that <em>genuinely needs</em> the feature it shows, the shape of all three, and the five ideas that were considered and cut, with reasons.</p>
+      <p class="why">Read this if you are choosing demos for a talk of your own.</p>
+    </a>
+
+  </div>
+
+  <h2>The three demo repos</h2>
+  <p class="sub">Each one shows exactly one capability and is independently clonable — its own <code>package.json</code>, its own <code>bun test</code>, its own seeded <code>.smithers/</code> pack. "Copy this folder" is the intended takeaway. Each carries a <code>DEMO.md</code> with the exact command order.</p>
+
+  <table>
+    <thead><tr><th>repo</th><th>shows</th><th>the line</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="https://github.com/H3xept/smithers-presentation/tree/main/examples/pricing-api"><code>pricing-api</code></a></td>
+        <td>human approval gates</td>
+        <td>"A rejection is an input, not an abort."</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/H3xept/smithers-presentation/tree/main/examples/flaky-monorepo"><code>flaky-monorepo</code></a></td>
+        <td>observability across a wide fan-out</td>
+        <td>"Twelve agents, one dashboard, one bill."</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/H3xept/smithers-presentation/tree/main/examples/todo-cli"><code>todo-cli</code></a></td>
+        <td>a custom workflow UI</td>
+        <td>"You edit the agent's plan while it waits."</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <b>On the numbers in these pages.</b> Every command, flag, port, node id, event name and measured
+    figure was re-checked against a live <code>smithers@0.31.0</code> install on 11 August 2026 — the
+    CLI's own <code>--help</code> and <code>--schema</code> output, the bundled <code>llms-full.txt</code>,
+    the observability Compose file, and real runs of the three demo repos. Where a feature does not work,
+    these pages say so and say how it was tested. The most load-bearing example: OpenTelemetry
+    <em>metrics</em> and logs reach the local collector, but <em>spans do not reach Tempo</em>, so there is
+    no trace waterfall to show. A planned slide died of that, and the appendices explain why.
+  </div>
+
+  <footer>
+    Smithers: <a href="https://smithers.sh">smithers.sh</a> ·
+    <a href="https://github.com/smithersai/smithers">github.com/smithersai/smithers</a> ·
+    npm <code>smithers-orchestrator</code><br />
+    Talk and appendices: <a href="https://github.com/H3xept/smithers-presentation">H3xept/smithers-presentation</a> ·
+    verified against v0.31.0, 11 August 2026
+  </footer>
+
+</div>
+</html>

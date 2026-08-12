@@ -1,0 +1,92 @@
+name: Deploy appendices to GitHub Pages
+
+# The talk and its four appendices are self-contained HTML files at the repo root.
+# There is no build step and no framework on purpose: every page must also open
+# correctly from `file://` on a laptop with no network. This workflow therefore
+# only stages the pages that are meant to be public and hands them to Pages.
+#
+# Deliberately NOT published: examples/ (three demo repos, each with its own
+# node_modules and a SQLite run store), *.db*, and local/ working notes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "smithers-deck-2026-08.html"
+      - "smithers-command-reference.html"
+      - "human-decisions-in-workflow-uis.html"
+      - "demo-runbook.html"
+      - "examples-brainstorm.html"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let an in-flight run finish rather than cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage the published pages
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          # Tell Pages not to run Jekyll over the output.
+          touch _site/.nojekyll
+          for page in \
+            index.html \
+            smithers-deck-2026-08.html \
+            smithers-command-reference.html \
+            human-decisions-in-workflow-uis.html \
+            demo-runbook.html \
+            examples-brainstorm.html
+          do
+            test -f "$page" || { echo "::error::missing page $page"; exit 1; }
+            cp "$page" _site/"$page"
+          done
+          ls -l _site
+
+      - name: Check every internal link resolves
+        run: |
+          set -euo pipefail
+          # Every href that is not an absolute URL, a bare anchor, or mailto:
+          # must resolve to a file we actually staged.
+          grep -ho 'href="[^"#][^"]*"' _site/*.html \
+            | sed 's/^href="//; s/"$//; s/[?#].*$//' \
+            | grep -v -E '^(https?:|mailto:|\./?$)' \
+            | sort -u > /tmp/targets.txt
+          : > /tmp/dangling.txt
+          while read -r target; do
+            [ -e "_site/$target" ] || echo "$target" >> /tmp/dangling.txt
+          done < /tmp/targets.txt
+          if [ -s /tmp/dangling.txt ]; then
+            while read -r bad; do echo "::error::dangling internal link: $bad"; done < /tmp/dangling.txt
+            exit 1
+          fi
+          echo "all internal links resolve:"
+          cat /tmp/targets.txt
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

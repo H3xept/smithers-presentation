@@ -38,12 +38,12 @@ a retry never mixes one package's result into another's.
 
 | Stage | Needs the Docker stack | Reads local state offline |
 | --- | --- | --- |
-| Grafana and Tempo views | yes | no |
+| Grafana metric panels (no Tempo traces — see stage 4) | yes | no |
 | `smithers graph` | no | yes |
 | `smithers timeline` / `inspect` / `why` / `scores` | no | yes |
 | `smithers what` | no | reads local state, calls a cheap model to narrate |
 
-Everything except the Grafana and Tempo panels works with the stack down. If Docker
+Everything except the Grafana panels works with the stack down. If Docker
 is unavailable on stage, skip stage 1 and stage 4 and run the CLI beats instead.
 
 ## Stage 0 — show the fixture
@@ -95,7 +95,7 @@ smithers up .smithers/workflows/harden-packages.tsx \
 ```
 
 `--max-concurrency 12` lets all twelve lanes dispatch at once. Without it the
-engine caps at 4 and the trace looks narrow. Note the printed run id.
+engine caps at 4 and the throughput panel looks narrow. Note the printed run id.
 
 > "One command starts twelve agents. Each one owns a single package and may not
 > touch another."
@@ -114,37 +114,55 @@ smithers inspect <run> --watch
 
 Offline.
 
-## Stage 4 — the three things to point at in Grafana and Tempo
+## Stage 4 — the three things to point at in Grafana
 
-Open Grafana at http://localhost:3001.
+Open the **Smithers Overview** dashboard at <http://localhost:3001/d/smithers-overview>.
 
-**1. Twelve parallel spans.** In Grafana, choose the Tempo data source, search for
-the trace by service name `harden-packages-strong`, and open it. Point at the
-waterfall: twelve `pkg-NN:fix` spans start together and sit side by side under the
-`lanes` group.
+All three beats below were verified against a real run (`27` nodes, `2m 21s`).
 
-> "This is what fan-out looks like. Twelve spans, one start time, twelve independent
-> lifetimes."
+**1. The burst.** *Runs &amp; Nodes* → **Node Throughput** and **Node Duration**.
+Twenty-seven nodes start inside a two-minute window, and the duration heatmap
+shows the whole fan-out landing in one column.
 
-**2. One lane with a nested retry.** In the same waterfall, find `pkg-07`. Its lane
-has a second `pkg-07:fix` and `pkg-07:verify` pair nested under the loop, because
-the first verify raced the clock and lost. Every other lane has one pair.
+> "One command started twelve agents. That column is all twelve finishing."
 
-> "Only pkg-07 retried. The retry is scoped to that lane, so eleven packages did not
-> pay for one flaky clock."
-
-**3. Tokens per node.** On the **Smithers Overview** dashboard, use the *Node
-Throughput* and *Node Duration* panels for shape. For cost, query Prometheus
-directly:
+**2. Cost, split by model.** Query Prometheus at <http://localhost:9090> directly.
+The dashboard has no token panel, so use the query:
 
 ```promql
-sum by (model) (smithers_smithers_tokens_input_total)
 sum by (model) (smithers_smithers_tokens_output_total)
-histogram_quantile(0.95, sum(rate(smithers_smithers_tokens_output_per_call_bucket[5m])) by (le))
+sum by (model) (smithers_smithers_tokens_input_total)
 ```
 
-> "Tokens are labelled by agent and model, so cost is a dimension of the dashboard,
-> not a spreadsheet you keep on the side."
+A real run returned `claude-opus-5 9920`, `gpt-5.6-terra 3091`, `gpt-5.6-luna 709`
+output tokens. Tokens are labelled by model, so the seat you chose per node is a
+dimension you can query, not a spreadsheet you keep on the side.
+
+> "Three models ran in one workflow, and the bill is broken down by which seat
+> did which work."
+
+**3. Success rate and the pool.** *Overview* → **Node Success Rate** reads 100%.
+Then, in the terminal:
+
+```sh
+smithers inspect <run> --pool
+```
+
+A real run returned `codex/gpt-5.6-terra x13, claude-code/claude-opus-5 x12,
+codex/gpt-5.6-luna x1, codex/gpt-5.6-sol x1`. That is the same cost story with
+Docker down.
+
+### Two honest caveats — know these before you present
+
+- **The Traces row stays empty.** With `SMITHERS_OTEL_ENABLED=1` and
+  `OTEL_EXPORTER_OTLP_ENDPOINT` set, metrics and logs reach the collector but no
+  spans reach Tempo. Verified: `GET :3200/api/search` returns
+  `{"traces":[]}` while Prometheus holds the run's metrics. Do not promise a
+  span waterfall.
+- **Several panels read "No data" after the run finishes.** *Active Runs*,
+  *Active Nodes*, and the *Tools* row are live gauges. Show the dashboard while a
+  run is in flight, or stick to *Node Throughput*, *Node Duration*, *Node Success
+  Rate*, and the Prometheus token query.
 
 Needs Docker.
 
@@ -152,16 +170,18 @@ Needs Docker.
 
 ```sh
 smithers scores <run>
-smithers scores <run> --node report
 ```
 
-Three scorers run on `report`: `schemaAdherenceScorer` for shape, `latencyScorer`
-for speed against a 30 s target and a 180 s ceiling, and an `llmJudge` called
-`rollup-accuracy` that rates the roll-up against the per-package evidence it was
-handed.
+A real run returned two rows: `Latency 1.00` ("19832ms is within target
+(30000ms)") and `Schema Adherence 1.00` ("Output matches schema").
 
 > "The run does not just finish. It grades itself, and the grade is a row you can
 > query later."
+
+**Caveat:** the third scorer, the `llmJudge` called `Roll-up Accuracy`, starts but
+never reports. The logs show `report scorer Roll-up Accuracy started` with no
+matching result, because the run completes before the judge answers. Present the
+two deterministic scorers and leave the judge out of the script.
 
 Offline.
 
@@ -243,5 +263,5 @@ dry-run path; it never calls a model.
 
 ```sh
 smithers observability --down
-bun test packages   # still 11 or 12 failures; the fixture is unchanged
+bun test packages   # restore the fixture with `git checkout -- packages` first
 ```
