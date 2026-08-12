@@ -1397,6 +1397,32 @@ run-1786513356304
     </div>
   </section>
 
+  <!-- 17b · THE ADOPTION PATH: TRIAGE → TRIAL → SURVEY -->
+  <section class="slide" id="s32">
+    <div class="slide-inner">
+      <p class="eyebrow">Part 5 · the adoption path · before anyone rents a GPU</p>
+      <h2 class="headline">Find the 24/7 workflows first. <span class="accent">Measure</span>, then buy.</h2>
+      <p class="lead wide">Break-even is a <em>rate you hold</em>, not a purchase you approve. So the work in front of the rig is a survey: per repo, which flows genuinely want to run unattended — and what do they burn once they do?</p>
+      <div class="steps" style="margin-top:1rem">
+        <div class="step">
+          <div class="n">STEP 1</div><div class="t">triage, per repo</div>
+          <div class="d">Walk each repo and mark only the flows that must leave the laptop: the trigger isn't a human (<code style="font-family:var(--mono)">cron</code>, webhook, CI), the run outlives your session, the result should land while you sleep, or the fan-out exceeds one machine. Everything else stays local — that's the <strong>you + your harness</strong> default from slide 03. Output: a candidate list per repo, not a platform plan.</div>
+        </div>
+        <div class="step">
+          <div class="n">STEP 2</div><div class="t">trial them locally, interactively</div>
+          <div class="d">Run every candidate on your own machine for a few weeks, human in the loop, <code style="font-family:var(--mono)">--interactive</code> or the monitor open. This is where you find the node that loops, the gate nobody answers, and the prompt that burns 200k tokens to say “no changes”. Nothing goes on a rig you haven't watched fail.</div>
+        </div>
+        <div class="step">
+          <div class="n">STEP 3</div><div class="t">survey the saturation</div>
+          <div class="d">The trial already wrote the data: every attempt is a row. Tally engine/model attempts with <code style="font-family:var(--mono)">inspect --pool</code>, quota burn with <code style="font-family:var(--mono)">smithers usage</code>, and the fraction of wall-clock the agents were actually <em>busy</em>. Project the surviving candidates onto their real schedules and you get one number: <strong>sustained output TPS</strong>.</div>
+        </div>
+      </div>
+      <p class="callout" style="margin-top:1.3rem">That number is the x-axis of the previous slide. Clear the crossing point for the rig you'd rent and self-hosting pays; miss it and the honest answer is “not yet” — plus a measured list of what would change it.</p>
+      <p class="note" style="margin-top:1rem">// measure busy time, not elapsed time. the completed flow on slide 19 ran <b>23m 43s</b> wall-clock with agents busy for about <b>4</b> — a graph parked at a human gate saturates nothing.</p>
+      <p class="note">// the survey is per <em>org</em>, not per repo: one rig serves every repo, so the candidate lists add up. that is usually what tips the arithmetic, not any single workflow.</p>
+    </div>
+  </section>
+
   <!-- 21 · THE BIND -->
   <section class="slide" id="s21">
     <div class="slide-inner">
@@ -1682,7 +1708,7 @@ run-1786513356304
       s6: 'part 3 · using it', s7: 'part 3 · using it', s8: 'part 3 · using it',
       s9: 'part 3 · using it', s10: 'part 3 · using it', s11: 'part 3 · using it', s12: 'part 3 · using it',
       s13: 'part 4 · property 2/4', s14: 'part 4 · property 3/4', s25: 'part 4 · surfaces', s28: 'part 4 · a working lens', s26: 'part 4 · read-back', s16: 'part 4 · property 4/4',
-      s17: 'part 5 · cost', s18: 'part 5 · cost', s19: 'part 5 · cost',
+      s17: 'part 5 · cost', s18: 'part 5 · cost', s32: 'part 5 · cost',
       s20: 'part 5 · cost', s21: 'part 5 · cost',
       s22: 'summary',
       s23: 'appendix', s24: 'appendix', s15: 'appendix', s27: 'appendix',
