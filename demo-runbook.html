@@ -121,16 +121,18 @@
   <hr />
   <section id="live">
     <p class="eyebrow good">Rehearsal state · 12 Aug 2026</p>
-    <h2>Three finished runs are on disk</h2>
-    <p>All three ran to completion and were verified against the rows they wrote. <strong>None of them is parked any more</strong> — the two human gates were driven to a decision during verification, so what is on disk is read-back material, not stage material. Rehearse the read-back commands against these, and re-park the two interactive runs before you speak.</p>
+    <h2>Five runs are on disk: two fresh and parked, three verified</h2>
+    <p>Every command in this runbook was executed against these runs. The two fresh ones are parked and waiting for you right now; the three finished ones are read-back material for slide 17 and for any offline pivot.</p>
     <table>
       <tr><th>repo</th><th>run id</th><th>state on disk</th></tr>
-      <tr><td><code>examples/pricing-api</code></td><td><code>run-1786513356216</code></td><td>finished · 7 nodes · 18m 13s · gate denied, then approved</td></tr>
-      <tr><td><code>examples/todo-cli</code></td><td><code>run-1786513356304</code></td><td>finished · 4 nodes · 23m 43s · 19m 44s of it parked on <code>await-edit</code></td></tr>
+      <tr><td><code>examples/pricing-api</code></td><td><code>run-1786515673496</code></td><td><b>fresh</b> · parks on <code>gate</code> after about 2 minutes · use this on stage</td></tr>
+      <tr><td><code>examples/todo-cli</code></td><td><code>run-1786515673393</code></td><td><b>fresh</b> · parked on <code>await-edit</code>, spec drafted · use this on stage</td></tr>
+      <tr><td><code>examples/pricing-api</code></td><td><code>run-1786514540762</code></td><td>finished · denied, revised twice, approved, applied · <b>10 pass / 0 fail</b></td></tr>
+      <tr><td><code>examples/todo-cli</code></td><td><code>run-1786513356304</code></td><td>finished · 23m 43s, most of it parked · spec edited in the UI · <b>21 pass / 0 fail</b></td></tr>
       <tr><td><code>examples/flaky-monorepo</code></td><td><code>run-1786513376726</code></td><td>finished · 27 nodes · 2m 21s · 100% success</td></tr>
     </table>
-    <p class="note">These three are exactly what slide 17 reads back: <code>smithers timeline &lt;run&gt;</code>, <code>smithers inspect &lt;run&gt;</code>, <code>smithers scores &lt;run&gt; --node report</code> and <code>smithers what &lt;run&gt;</code> all work offline against these rows, and the 19m 44s park in the todo-cli run is the zero-cost-wait argument with a timestamp on it. The flaky-monorepo fixture has been reset to failing on purpose; that finished run's metrics and scores survive the reset, which is the point.</p>
-    <div class="callout warn"><b>Before the talk you must re-launch two runs</b> — <code>pricing-api</code> up to its gate and <code>todo-cli</code> up to its spec editor. Each takes about ten minutes of unattended agent time, so start them while you set up the room. The pre-flight section below is the command order.</div>
+    <p class="note">All three repo fixtures have been reset to their original failing or pre-change state, and every finished run's rows, metrics, and scores survive that reset. That is the durability argument with a timestamp on it: the code went back, the record did not.</p>
+    <div class="callout warn"><b>The two fresh runs park indefinitely,</b> so they survive a reboot and a closed laptop. Re-launch them only if you consume them in a rehearsal — each needs about 2 to 4 minutes of unattended agent time to reach its park.</div>
   </section>
 
   <hr />
@@ -205,28 +207,38 @@ smithers why &lt;run-id&gt;</code></pre>
 <pre class="say"><code>"This run is not finished and it is not stuck. It is parked on me.
  It has been parked for twenty minutes and it cost nothing to wait,
  because a parked run is a row, not a process."</code></pre>
+    <p class="note"><code>why</code> prints the blocked node, how long it has waited, and both next commands — including the exact <code>deny</code> line with its <code>--iteration</code>. Read it off the screen instead of typing from memory.</p>
 
-    <h4>beat 2 — reject it, with a reason</h4>
-<pre><code>smithers deny &lt;run-id&gt; --node gate --by leo \
-  --note "Mid-cycle accounts must keep the old price until renewal."
+    <h4>beat 2 — show the proposal, and the empty field</h4>
+<pre><code>smithers chat &lt;run-id&gt;</code></pre>
+    <p>The tail is the structured proposal: <code>summary</code>, <code>priceDelta</code>, <code>affectedCallers</code>, the <code>diff</code>, the migration SQL, <code>midCycleDecision</code> — and <code>"honoredObjection": null</code>. Point at that null. It is about to have your sentence in it.</p>
 
-smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resume true</code></pre>
+    <h4>beat 3 — reject it, with a reason</h4>
+<pre><code>smithers deny &lt;run-id&gt; --node gate --iteration 0 --by leo \
+  --note "Do not grandfather. Mid-cycle accounts must be re-priced pro-rata from the effective date, and the invoice must show both rates."
+
+smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resume true --detach</code></pre>
 <pre class="say"><code>"My rejection and my note are now a decision row in the database.
  The gate uses onDeny=continue, so a rejection is data, not a crash.
  Watch what it does with the sentence I just wrote."</code></pre>
-    <p>The run re-enters the review loop. <code>revise</code> reads the note and drafts a second proposal that honours it, then the same gate asks again. This is the beat the whole demo exists for — do not rush past it.</p>
+    <p><code>--node gate</code> and <code>--iteration</code> are both required once the loop has turned. The run then revises <b>twice</b> — the denial row persists, so the loop runs <code>revise</code> for iteration 0 and iteration 1 before re-gating. Expect about 4 minutes, and say something during it.</p>
+    <div class="callout good"><b>Verified:</b> after the resume, <code>smithers chat &lt;run-id&gt;</code> shows <code>"honoredObjection": "Do not grandfather…"</code> — your sentence, quoted back — and the new summary makes the pro-rata path mandatory with a dual-rate invoice. That contrast, null then your words, is the whole demo.</div>
 
-    <h4>beat 3 — approve, and only now does anything change</h4>
-<pre><code>smithers approve &lt;run-id&gt; --node gate --by leo --note "Mid-cycle rule accepted."
-smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resume true</code></pre>
+    <h4>beat 4 — approve, and only now does anything change</h4>
+<pre><code>smithers approve &lt;run-id&gt; --node gate --by leo --note "Pro-rata and dual-rate invoice accepted. Ship it."
+smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resume true --detach</code></pre>
 <pre class="say"><code>"Only now does apply run. It writes the code, the price table, and a
- new migration, then runs the tests. Deciding and acting were separate
- nodes the whole time, which is why my rejection was reversible."</code></pre>
+ new migration, then makes the suite green. Deciding and acting were
+ separate nodes the whole time, which is why my rejection was reversible."</code></pre>
+    <p><code>apply</code> takes about 3 minutes. Verified end state: <code>prices.json</code>, <code>src/pricing.ts</code>, <code>src/pricing.test.ts</code> modified, <code>migrations/002_daily_overage.sql</code> created, and <code>bun test src</code> reports <b>10 pass / 0 fail</b>.</p>
 
-    <h4>beat 4 — the audit trail, if you have ten seconds</h4>
-<pre><code>smithers timeline &lt;run-id&gt;</code></pre>
-<pre class="say"><code>"Proposal, rejection, my note, revision, approval. Six months from now
- this is the answer to 'why did the price change?'"</code></pre>
+    <h4>beat 5 — the implementer's own account</h4>
+<pre><code>smithers output &lt;run-id&gt; apply
+smithers timeline &lt;run-id&gt;</code></pre>
+<pre class="say"><code>"Proposal, rejection, my note, revision, approval, applied. Six months
+ from now this is the answer to 'why did the price change?'"</code></pre>
+    <p class="note">The <code>apply</code> row carries <code>summary</code>, <code>filesWritten</code>, <code>testsPassed</code>, and <code>testReport</code>. In the verified run it also pushed back on its own brief — it argued that only some test numbers were stale and said which ones it changed and why. Good material if someone asks whether the agent just does as it is told.</p>
+    <p class="note"><b>There is no <code>smithers output &lt;run&gt; propose</code>.</b> That node has no registered output table and the command errors with <code>NodeHasNoOutput</code>. Use <code>smithers chat</code> for the proposal.</p>
 
     <div class="callout"><b>Optional, only with slack:</b> the migration has its own second gate behind <code>--input '{"migrationGate":true}'</code>. Two gates, two owners: approve the price, hold the schema. It needs a fresh run, so it is a bonus, not a beat.</div>
   </section>
@@ -271,10 +283,13 @@ smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resum
  in that order, and the UI does it for you."</code></pre>
     <p>The stage strip advances to <code>implement</code>. Cycle the right pane: <strong>Diff</strong> fills in file by file, <strong>Tests</strong> streams live <code>bun test</code> output into a real terminal, <strong>Agent chat</strong> shows the transcript of whichever node you select.</p>
 
-    <h4>beat 5 — land it</h4>
-<pre><code>smithers inspect &lt;run-id&gt;</code></pre>
+    <h4>beat 5 — land it: two rows, two documents</h4>
+<pre><code>smithers output &lt;run-id&gt; draft-spec | head -c 400
+smithers output &lt;run-id&gt; await-edit | tail -c 400</code></pre>
 <pre class="say"><code>"Two rows, two different documents. The agent wrote the first.
  I wrote the second. The code matches mine."</code></pre>
+    <p class="note"><b>Use <code>output</code>, not <code>inspect</code>.</b> <code>smithers inspect</code> lists node states but not their output rows, so it cannot show the two documents. The <code>await-edit</code> row ends with <code>"edited_by":"human"</code> — the provenance of the sentence that steered the build.</p>
+    <div class="callout good"><b>Verified on a real run:</b> typing three decisions into the editor and pressing submit produced code that honours all three — <code>Date.UTC</code> parsing in <code>src/store.ts</code>, a next instance built on completion, and a <code>byDue</code> comparator that puts undated todos last and breaks ties by id. <code>bun test src</code> went from 6 tests to <b>21 pass / 0 fail</b>. The run reported <code>waiting-event</code> before the submit and <code>running</code> within a second after it.</div>
 
     <div class="callout"><b>If the UI misbehaves,</b> the same submit is one CLI command. Both keys are required:<br />
     <code>smithers signal &lt;run-id&gt; spec.edited --correlation spec-then-build-edit --data '{"markdown":"…","editedBy":"leo"}'</code> then <code>smithers up … --run-id &lt;run-id&gt; --resume true</code>. Omitting <code>--correlation</code> silently parks forever.</div>
@@ -326,9 +341,9 @@ smithers inspect &lt;run&gt; --pool</code></pre>
       <tr><td>The gate will not clear</td><td>Several gates pending, so <code>--node</code> is required.</td><td><code>smithers why &lt;run&gt;</code> names the node. Pass it to <code>--node</code>.</td></tr>
       <tr><td>Deny seems to kill the run</td><td>You denied a different gate, or resumed from the wrong file path.</td><td><code>smithers timeline &lt;run&gt;</code>, then resume with the exact workflow path and <code>--run-id</code>.</td></tr>
       <tr><td>Run parked after a signal</td><td>Signal name and correlation id must <em>both</em> match.</td><td>Re-send with <code>--correlation spec-then-build-edit</code>, then resume.</td></tr>
-      <tr><td>UI is blank</td><td>Gateway not up, or no run for that workflow.</td><td>Re-run <code>smithers ui &lt;run-id&gt;</code>; it starts a Gateway itself. Fall back to <code>smithers monitor &lt;run-id&gt;</code>.</td></tr>
-      <tr><td>Grafana panels read "No data"</td><td>Expected once a run finishes: <i>Active Runs</i>, <i>Active Nodes</i>, and the <i>Tools</i> row are live gauges. The <i>Traces</i> row is always empty — spans do not reach Tempo.</td><td>Stay on <i>Node Throughput</i>, <i>Node Duration</i>, <i>Node Success Rate</i>, and the Prometheus token query. Or pivot to <code>smithers inspect --pool</code> and <code>scores</code>.</td></tr>
+      <tr><td><b>Run reports <code>cancelled</code> mid-node</b></td><td>Hit once during verification: a second <code>up --resume</code> issued seconds after the deny fought the still-live launcher process for ownership, and the loser cancelled the run.</td><td><b>Verified recovery:</b> re-run <code>smithers up &lt;workflow&gt; --run-id &lt;id&gt; --resume true --detach</code>. It restarts from the last finished node and reaches the gate normally. Give the deny a few seconds before you resume, and never resume twice.</td></tr>
       <tr><td>Agent errors mid-demo</td><td>Rate limit or credential.</td><td>Do not debug on stage. <code>smithers timeline</code> on a finished run tells the same story.</td></tr>
+      <tr><td>Grafana panels read "No data"</td><td>Expected once a run finishes: <i>Active Runs</i>, <i>Active Nodes</i>, and the <i>Tools</i> row are live gauges. The <i>Traces</i> row is always empty — spans do not reach Tempo.</td><td>Stay on <i>Node Throughput</i>, <i>Node Duration</i>, <i>Node Success Rate</i>, and the Prometheus token query. Or pivot to <code>smithers inspect --pool</code> and <code>scores</code>.</td></tr>
       <tr><td>Network dies entirely</td><td>—</td><td><code>graph</code>, <code>ps</code>, <code>why</code>, <code>timeline</code>, <code>inspect</code>, <code>scores</code> all read local state. Run the talk from those.</td></tr>
     </table>
 
