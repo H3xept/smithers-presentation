@@ -16,9 +16,10 @@ export const SPEC_CORRELATION_KEY = "spec-then-build-edit";
 /** Workflow key, as mounted on the gateway. */
 export const WORKFLOW_KEY = "spec-then-build";
 
-/** The four top-level node ids, in pipeline order. */
+/** The five top-level node ids, in pipeline order. */
 export const NODE_IDS = {
   draftSpec: "draft-spec",
+  critique: "critique",
   awaitEdit: "await-edit",
   implement: "implement",
   test: "test",

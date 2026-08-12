@@ -25,6 +25,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -48,17 +49,22 @@ import { NODE_IDS, SPEC_CORRELATION_KEY, SPEC_EVENT, WORKFLOW_KEY } from "./spec
 /**
  * The `spec-then-build` run UI.
  *
- * The planning agent drafts a spec into `draft-spec`. This page seeds the
- * markdown editor from that row and the human rewrites it. Submitting delivers
- * the edited text to the parked `await-edit` node as a correlated signal and
- * then resumes the run, so `implement` builds from the human's words.
+ * The planning agent drafts a spec into `draft-spec`. The reviewer attacks that
+ * draft in `critique` and returns the spec it would rather build. This page
+ * seeds the markdown editor from the reviewer's rewrite, lists every correction
+ * it made, and lets the human throw any of them out - a rejection puts the
+ * drafted wording back, in place, without disturbing the rest of the text.
+ * Submitting delivers the final markdown to the parked `await-edit` node as a
+ * correlated signal and resumes the run, so `implement` builds from the human's
+ * words and is told which corrections were refused.
  */
 
 /** The agent nodes whose live chat this page surfaces. */
-const AGENT_NODE_IDS = [NODE_IDS.draftSpec, NODE_IDS.implement, NODE_IDS.test] as const;
+const AGENT_NODE_IDS = [NODE_IDS.draftSpec, NODE_IDS.critique, NODE_IDS.implement, NODE_IDS.test] as const;
 
 const STAGES = [
   { nodeId: NODE_IDS.draftSpec, label: "draft spec" },
+  { nodeId: NODE_IDS.critique, label: "review" },
   { nodeId: NODE_IDS.awaitEdit, label: "human edit" },
   { nodeId: NODE_IDS.implement, label: "implement" },
   { nodeId: NODE_IDS.test, label: "test" },
@@ -87,6 +93,9 @@ const layout = {
   stack: { display: "grid", gap: 12 } as const,
   editorActions: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" } as const,
   scroll: { maxHeight: 420, overflow: "auto" } as const,
+  correction: { display: "grid", gap: 6 } as const,
+  correctionHead: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" } as const,
+  swap: { display: "grid", gap: 4, margin: 0, fontSize: ".78rem", lineHeight: 1.45, whiteSpace: "pre-wrap" } as const,
 };
 
 /*
@@ -103,8 +112,74 @@ type RunFields = {
   finishedAtMs?: number;
 };
 
-/** Both `draftSpec` and `editedSpec` rows, as far as this page cares. */
+/** The `draftSpec` row, and the `editedSpec` row's markdown. */
 type SpecRow = { markdown?: string };
+
+/**
+ * The submitted `editedSpec` row. The store serves its columns in snake case
+ * and serialises the id array, so both spellings and both shapes are real.
+ */
+type EditedRow = {
+  markdown?: string;
+  rejectedCorrections?: readonly string[] | string;
+  rejected_corrections?: readonly string[] | string;
+};
+
+/** Ids of the corrections a submitted row records as thrown out. */
+function parseRejected(row: EditedRow | undefined): readonly string[] {
+  const raw = row?.rejectedCorrections ?? row?.rejected_corrections;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== "string" || raw.trim() === "") return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** One correction the reviewer proposes, as the `critique` row carries it. */
+type Correction = {
+  id: string;
+  severity?: string;
+  target?: string;
+  problem?: string;
+  before?: string;
+  after?: string;
+};
+
+/**
+ * The `critique` row: a verdict, a rewritten spec, and what it changed.
+ *
+ * The store serialises the `corrections` array into its column, so the row can
+ * arrive with that field as JSON text. Both shapes are real; `parseCorrections`
+ * is the one place that resolves them.
+ */
+type CritiqueRow = {
+  verdict?: string;
+  markdown?: string;
+  corrections?: Correction[] | string;
+  unfaulted?: string;
+};
+
+function parseCorrections(critique: CritiqueRow | undefined): readonly Correction[] {
+  const raw = critique?.corrections;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw !== "string" || raw.trim() === "") return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Correction[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Severity to badge variant. Anything unrecognised stays quiet. */
+const SEVERITY_VARIANT: Record<string, "destructive" | "warning" | "muted"> = {
+  blocker: "destructive",
+  risk: "warning",
+  nit: "muted",
+};
 
 /** The `test` row's counters. */
 type TestRow = { passed?: number; failed?: number };
@@ -186,6 +261,13 @@ export function App() {
   const [selectedRunId, setSelectedRunId] = useState<string | undefined>(runIdFromUrl);
   const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined);
   const [draftMarkdown, setDraftMarkdown] = useState<string | undefined>(undefined);
+  const [rejectedIds, setRejectedIds] = useState<readonly string[]>([]);
+  const [unappliable, setUnappliable] = useState<string | undefined>(undefined);
+  // `MarkdownEditor` deliberately reseeds its document only when `resetKey`
+  // changes, so a background refetch cannot move the caret. Every programmatic
+  // rewrite of the text - a rejected correction, a reset - has to bump this or
+  // the state changes while the visible document does not.
+  const [seedNonce, setSeedNonce] = useState(0);
   const [submitError, setSubmitError] = useState<string | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
 
@@ -198,23 +280,36 @@ export function App() {
   const live = activeRunId !== undefined && runStatus !== undefined && SETTLED_STATUS[runStatus.toLowerCase()] !== true;
 
   const draftOutput = useGatewayNodeOutput({ runId: activeRunId, nodeId: NODE_IDS.draftSpec });
+  const critiqueOutput = useGatewayNodeOutput({ runId: activeRunId, nodeId: NODE_IDS.critique });
   const editedOutput = useGatewayNodeOutput({ runId: activeRunId, nodeId: NODE_IDS.awaitEdit });
   const testOutput = useGatewayNodeOutput({ runId: activeRunId, nodeId: NODE_IDS.test });
   const diffState = useGatewayRunDiff({ runId: activeRunId });
   const tokenState = useGatewayRunTokenUsage(activeRunId ?? "", { refreshMs: live ? 5000 : undefined });
   const { submitSignal, resumeRun } = useGatewayActions();
 
-  const seedMarkdown = nodeRow<SpecRow>(draftOutput.data)?.markdown ?? "";
-  const submittedMarkdown = nodeRow<SpecRow>(editedOutput.data)?.markdown ?? "";
+  const draftedMarkdown = nodeRow<SpecRow>(draftOutput.data)?.markdown ?? "";
+  const critique = nodeRow<CritiqueRow>(critiqueOutput.data);
+  const corrections = parseCorrections(critique);
+  const reviewedMarkdown = critique?.markdown ?? "";
+  const editedRow = nodeRow<EditedRow>(editedOutput.data);
+  const submittedMarkdown = editedRow?.markdown ?? "";
+  // Before the submit the rejections are local state; after it they are a fact
+  // in the row, and the row outlives this page.
+  const shownRejected = submittedMarkdown === "" ? rejectedIds : parseRejected(editedRow);
   const testRow = nodeRow<TestRow>(testOutput.data);
 
-  // The editor is seeded once per drafted spec and then owned by the human, so
-  // a background refetch never yanks the caret out of a half-typed sentence.
-  const editorSeed = submittedMarkdown || seedMarkdown || EDITOR_PLACEHOLDER;
+  // The editor is seeded once per agent text and then owned by the human, so a
+  // background refetch never yanks the caret out of a half-typed sentence. The
+  // reviewer's rewrite wins the seed wherever it exists: the human edits a
+  // reviewed document, never a first draft.
+  const editorSeed = submittedMarkdown || reviewedMarkdown || draftedMarkdown || EDITOR_PLACEHOLDER;
   const editorValue = draftMarkdown ?? editorSeed;
   useEffect(() => {
     setDraftMarkdown(undefined);
+    setRejectedIds([]);
+    setUnappliable(undefined);
     setSubmitError(undefined);
+    setSeedNonce(0);
   }, [activeRunId, editorSeed]);
 
   const now = useNow(live);
@@ -243,8 +338,39 @@ export function App() {
     return bundle.patches.map((patch) => parseUnifiedFile(patch.diff, { path: patch.path }));
   }, [diffState.data]);
 
-  const awaitingEdit = activeRunId !== undefined && seedMarkdown !== "" && submittedMarkdown === "";
+  const awaitingEdit = activeRunId !== undefined && reviewedMarkdown !== "" && submittedMarkdown === "";
   const canSubmit = awaitingEdit && !submitting && editorValue.trim() !== "";
+
+  /**
+   * Reject a correction by putting the drafted wording back, or restore it by
+   * re-applying the reviewer's. Either direction is one literal substring swap
+   * on whatever is in the editor right now, so a half-typed sentence elsewhere
+   * survives it. When the text is no longer there verbatim - the human already
+   * rewrote that section, or the reviewer invented the passage outright and
+   * there is nothing to put back - say so rather than silently doing nothing.
+   */
+  const toggleCorrection = useCallback(
+    (correction: Correction) => {
+      const rejecting = !rejectedIds.includes(correction.id);
+      const needle = rejecting ? (correction.after ?? "") : (correction.before ?? "");
+      const replacement = rejecting ? (correction.before ?? "") : (correction.after ?? "");
+      if (needle === "" || !editorValue.includes(needle)) {
+        setUnappliable(
+          `${correction.id} cannot be swapped automatically: ${
+            needle === ""
+              ? "it added text rather than replacing any, so there is no original wording to restore."
+              : "that wording is no longer in the editor verbatim."
+          } Edit the section by hand instead.`,
+        );
+        return;
+      }
+      setUnappliable(undefined);
+      setDraftMarkdown(editorValue.replace(needle, replacement));
+      setRejectedIds(rejecting ? [...rejectedIds, correction.id] : rejectedIds.filter((id) => id !== correction.id));
+      setSeedNonce((nonce) => nonce + 1);
+    },
+    [editorValue, rejectedIds],
+  );
 
   const submit = useCallback(async () => {
     if (!activeRunId) return;
@@ -262,7 +388,12 @@ export function App() {
         runId: activeRunId,
         signalName: SPEC_EVENT,
         correlationKey: SPEC_CORRELATION_KEY,
-        payload: { markdown: editorValue, editedBy: "human" },
+        payload: {
+          markdown: editorValue,
+          editedBy: "human",
+          basedOn: reviewedMarkdown === "" ? "draft" : "reviewed",
+          rejectedCorrections: [...rejectedIds],
+        },
       });
       await resumeRun({ runId: activeRunId });
       await editedOutput.refetch();
@@ -271,7 +402,7 @@ export function App() {
     } finally {
       setSubmitting(false);
     }
-  }, [activeRunId, editorValue, submitSignal, resumeRun, editedOutput]);
+  }, [activeRunId, editorValue, reviewedMarkdown, rejectedIds, submitSignal, resumeRun, editedOutput]);
 
   const chatNodeIds: readonly string[] =
     selectedNodeId !== undefined && (AGENT_NODE_IDS as readonly string[]).includes(selectedNodeId)
@@ -291,6 +422,11 @@ export function App() {
               label="Tokens"
               value={totalTokens >= 1000 ? `${(totalTokens / 1000).toFixed(1)}k` : String(totalTokens)}
               hint="all agent nodes"
+            />
+            <KpiStat
+              label="Corrections"
+              value={corrections.length === 0 ? "—" : `${corrections.length - shownRejected.length}/${corrections.length}`}
+              hint={critique === undefined ? "not reviewed yet" : `reviewer says ${critique.verdict ?? "?"}`}
             />
             <KpiStat
               label="Tests passing"
@@ -313,7 +449,7 @@ export function App() {
       {activeRunId === undefined ? (
         <EmptyState
           title="No spec-then-build run yet"
-          description="Start a run to draft a spec, then edit it here before anything is implemented."
+          description="Start a run to draft a spec, have it reviewed, then edit the result here before anything is implemented."
           action={
             <LaunchButton workflow={WORKFLOW_KEY} onLaunched={setSelectedRunId}>
               Start a run
@@ -332,8 +468,10 @@ export function App() {
                   {submittedMarkdown
                     ? "Submitted. The implementer is building from this text."
                     : awaitingEdit
-                      ? "The run is parked. Answer the open questions, then submit. This text is the build contract."
-                      : "Waiting for the planning agent to draft the spec."}
+                      ? "The reviewer's rewrite, parked and waiting for you. Throw out any correction, answer the open questions, then submit. This text is the build contract."
+                      : draftedMarkdown
+                        ? "Drafted. The reviewer is attacking it now."
+                        : "Waiting for the planning agent to draft the spec."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -341,7 +479,7 @@ export function App() {
                   <MarkdownEditor
                     aria-label="Feature spec"
                     value={editorValue}
-                    resetKey={`${activeRunId}:${editorSeed.length}`}
+                    resetKey={`${activeRunId}:${editorSeed.length}:${seedNonce}`}
                     readOnly={!awaitingEdit}
                     onChange={setDraftMarkdown}
                   />
@@ -349,8 +487,17 @@ export function App() {
                     <Button onClick={submit} disabled={!canSubmit}>
                       {submitting ? "Submitting…" : "Submit spec and resume"}
                     </Button>
-                    <Button variant="outline" onClick={() => setDraftMarkdown(undefined)} disabled={!awaitingEdit}>
-                      Reset to draft
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setDraftMarkdown(undefined);
+                        setRejectedIds([]);
+                        setUnappliable(undefined);
+                        setSeedNonce((nonce) => nonce + 1);
+                      }}
+                      disabled={!awaitingEdit}
+                    >
+                      Reset to the reviewed text
                     </Button>
                   </div>
                   {submitError !== undefined ? (
@@ -359,12 +506,21 @@ export function App() {
                       <AlertDescription>{submitError}</AlertDescription>
                     </Alert>
                   ) : null}
+                  {unappliable !== undefined ? (
+                    <Alert>
+                      <AlertTitle>Correction not swapped</AlertTitle>
+                      <AlertDescription>{unappliable}</AlertDescription>
+                    </Alert>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="diff">
+            <Tabs defaultValue="reviewer">
               <TabsList>
+                <TabsTrigger value="reviewer" count={corrections.length}>
+                  Reviewer
+                </TabsTrigger>
                 <TabsTrigger value="diff" count={diffFiles.length}>
                   Diff
                 </TabsTrigger>
@@ -373,6 +529,72 @@ export function App() {
                   Agent chat
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="reviewer">
+                {critique === undefined ? (
+                  <EmptyState
+                    title="Not reviewed yet"
+                    description="The reviewer reads the draft against the real code and rewrites it. Every correction it makes lands here, and you can throw any of them out."
+                  />
+                ) : (
+                  <div style={{ ...layout.stack, ...layout.scroll }}>
+                    <div style={layout.correctionHead}>
+                      <Badge
+                        variant={
+                          critique.verdict === "sound" ? "success" : critique.verdict === "broken" ? "destructive" : "warning"
+                        }
+                      >
+                        {critique.verdict ?? "unknown"}
+                      </Badge>
+                      <CardDescription>{critique.unfaulted}</CardDescription>
+                    </div>
+                    {corrections.length === 0 ? (
+                      <EmptyState title="No corrections" description="The reviewer could not fault the draft." />
+                    ) : (
+                      corrections.map((correction) => {
+                        const isRejected = shownRejected.includes(correction.id);
+                        return (
+                          <Card key={correction.id}>
+                            <CardHeader>
+                              <div style={layout.correctionHead}>
+                                <Badge variant={SEVERITY_VARIANT[correction.severity ?? ""] ?? "secondary"}>
+                                  {correction.severity ?? "note"}
+                                </Badge>
+                                <CardTitle>{correction.target ?? correction.id}</CardTitle>
+                                {isRejected ? <Badge variant="muted">rejected</Badge> : null}
+                              </div>
+                              <CardDescription>{correction.problem}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div style={layout.correction}>
+                                <CardDescription>draft</CardDescription>
+                                <pre style={layout.swap}>
+                                  <code>
+                                    {correction.before === "" ? "(nothing - the reviewer added this)" : correction.before}
+                                  </code>
+                                </pre>
+                                <CardDescription>reviewer</CardDescription>
+                                <pre style={layout.swap}>
+                                  <code>{correction.after}</code>
+                                </pre>
+                                <div style={layout.editorActions}>
+                                  <Button
+                                    variant={isRejected ? "default" : "outline"}
+                                    onClick={() => toggleCorrection(correction)}
+                                    disabled={!awaitingEdit}
+                                  >
+                                    {isRejected ? "Restore this correction" : "Reject and put the draft back"}
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </TabsContent>
 
               <TabsContent value="diff">
                 {diffFiles.length === 0 ? (

@@ -1132,8 +1132,8 @@
       <div class="cols two">
         <div>
           <p class="lead">A workflow declares <code style="font-family:var(--mono);color:var(--cyan)">&lt;UI entry="../ui/spec-then-build.tsx" /&gt;</code> and the Gateway builds and serves that file per run. The page is composed from shipped components — <code style="font-family:var(--mono)">WorkflowUiShell</code>, <code style="font-family:var(--mono)">RunTree</code>, <code style="font-family:var(--mono)">RunEventLog</code>, <code style="font-family:var(--mono)">ApprovalPanel</code>, <code style="font-family:var(--mono)">MarkdownEditor</code>, <code style="font-family:var(--mono)">DiffHunks</code>, <code style="font-family:var(--mono)">KpiStat</code> — over live Gateway hooks, not hand-rolled markup.</p>
-          <p class="lead">In <code style="font-family:var(--mono)">examples/todo-cli</code>, the agent drafts a spec, the page renders it in a Markdown editor, and the text <em>you edit in the browser</em> is what the implementer node receives. One <code style="font-family:var(--mono)">.tsx</code> file, checked in next to the workflow.</p>
-          <p class="callout smith">The UI is part of the workflow's contract: the button's <code style="font-family:var(--mono)">nodeId</code> is the same string as the gate's <code style="font-family:var(--mono)">id</code> prop.</p>
+          <p class="lead">In <code style="font-family:var(--mono)">examples/todo-cli</code>, one agent drafts a spec and a second attacks it. The page renders the reviewer's corrections as cards you keep or throw out, seeds a Markdown editor from the surviving text, and the text <em>you submit in the browser</em> is what the implementer node receives. One <code style="font-family:var(--mono)">.tsx</code> file, checked in next to the workflow.</p>
+          <p class="callout smith">The UI is part of the workflow's contract: the wait node's <code style="font-family:var(--mono)">event</code> and <code style="font-family:var(--mono)">correlationId</code> are the same two strings the page submits, imported from one shared file so they cannot drift.</p>
         </div>
         <div>
           <div class="code term" data-file="two UIs, one gateway">
@@ -1174,10 +1174,10 @@
         <div class="right">
           <div class="vhead">plan as a parked node + its own UI</div>
           <ul>
-            <li><strong>draft-spec</strong> writes the plan; the run <strong>parks</strong> on <code style="font-family:var(--mono)">WaitForEvent</code> — the human step is a node, not a chat</li>
-            <li>I edit the spec in the workflow's <strong>own UI</strong> — a real Markdown editor over the drafted row, diff and tests beside it</li>
-            <li><strong>the text I submit is the implementer's input</strong> — the edge reads the wait node's row, never the draft</li>
-            <li>two rows prove it after the fact: the agent's document, and mine. The code matches mine.</li>
+            <li><strong>draft-spec</strong> writes the plan, <strong>critique</strong> attacks it against the real code; the run <strong>parks</strong> on <code style="font-family:var(--mono)">WaitForEvent</code> — the human step is a node, not a chat</li>
+            <li>the reviewer's corrections arrive as <code style="font-family:var(--mono)">before</code>/<code style="font-family:var(--mono)">after</code> text, so the UI lets me <strong>keep or throw out each one</strong> inside the document I am editing — still one human stop</li>
+            <li><strong>the text I submit is the implementer's input</strong> — the edge reads the wait node's row, never the draft and never the review</li>
+            <li>three rows prove it after the fact: the planner's document, the reviewer's, and mine. The code matches mine, and the row records which corrections I refused.</li>
           </ul>
         </div>
       </div>
@@ -1466,7 +1466,7 @@ run-1786513356304
         <div class="card smith">
           <span class="k">custom UI</span>
           <h3>examples/todo-cli</h3>
-          <p>The agent drafts a spec, <em>you edit it in the browser</em>, and the edited markdown is what the implementer receives. One <code style="font-family:var(--mono)">.tsx</code> composed from shipped components.</p>
+          <p>One agent drafts a spec, a second attacks it, <em>you keep or reject each correction and edit the result in the browser</em>, and the text you submit is what the implementer receives. One <code style="font-family:var(--mono)">.tsx</code> composed from shipped components.</p>
           <span class="ex">smithers up …/spec-then-build.tsx -d</span>
           <span class="ex">smithers ui &lt;run&gt;</span>
         </div>

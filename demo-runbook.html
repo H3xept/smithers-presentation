@@ -247,15 +247,15 @@ smithers timeline &lt;run-id&gt;</code></pre>
 
   <section id="d2">
     <p class="eyebrow smith">Demo 2 · slide 09 · tab 2 + browser</p>
-    <h2><span class="num">02</span>todo-cli — you edit the agent's plan</h2>
-    <p><span class="tag smith">2.5 minutes</span><span class="tag">pre-warmed and parked</span><span class="tag good">no Docker</span></p>
+    <h2><span class="num">02</span>todo-cli — two agents argue, you decide</h2>
+    <p><span class="tag smith">3 minutes</span><span class="tag">pre-warmed and parked</span><span class="tag good">no Docker</span></p>
 
     <h4>beat 1 — the graph, in one second</h4>
 <pre><code>smithers graph .smithers/workflows/spec-then-build.tsx</code></pre>
-<pre class="say"><code>"Draft a spec, then wait for a human. That is the first frame, and it
- rendered without calling a model — the graph is a contract you can
- check before you spend a token."</code></pre>
-    <p class="note">Verified: <code>graph</code> renders frame zero, so exactly two nodes appear — <code>draft-spec</code> and the <code>await-edit</code> wait node, with its <code>event</code> and <code>correlationId</code> printed as props. <code>implement</code> and <code>test</code> are gated on upstream output and materialise once it exists. Say "the first frame", not "four nodes"; somebody in the room will count.</p>
+<pre class="say"><code>"Draft a spec, have it reviewed, then wait for a human. That is the
+ first frame, and it rendered without calling a model — the graph is a
+ contract you can check before you spend a token."</code></pre>
+    <p class="note">Verified: <code>graph</code> renders frame zero, so exactly one node appears — <code>draft-spec</code>. <code>critique</code> is gated on its output and <code>await-edit</code> on the critique's, so the graph grows as the run earns each node. Say "the first frame", not "five nodes"; somebody in the room will count.</p>
 
     <h4>beat 2 — the UI ships with the workflow</h4>
     <p>Switch to the browser tab you opened at T-8. If you need it again: <code>smithers ui &lt;run-id&gt;</code>.</p>
@@ -263,32 +263,44 @@ smithers timeline &lt;run-id&gt;</code></pre>
  in .smithers/ui/spec-then-build.tsx, and it is composed from shipped
  components. Connection state, elapsed, tokens, tests passing, and a
  stage strip bound to live node status."</code></pre>
-    <p>The stage strip shows <code>draft spec</code> done and the run sitting on <code>human edit</code>.</p>
+    <p>The stage strip shows <code>draft spec</code> and <code>review</code> done, and the run sitting on <code>human edit</code>. The header reads <b>CORRECTIONS 6/6</b>.</p>
 
-    <h4>beat 3 — answer the questions the agent could not</h4>
-    <p>The left pane is a real WYSIWYG editor seeded from the <code>draft-spec</code> output. Scroll to <strong>Open questions</strong> and type over them, out loud:</p>
+    <h4>beat 3 — the second agent attacks the first</h4>
+    <p>The right pane opens on <strong>Reviewer</strong>: the verdict, what it could <em>not</em> fault, and one card per correction — severity, the section it attacks, the failure it claims, and the drafted text beside the replacement.</p>
+<pre class="say"><code>"A second agent read the first agent's spec against the real code. It
+ says broken, and it lists six reasons. None of them is binding on me."</code></pre>
+    <p>Press <strong>Reject and put the draft back</strong> on the list-ordering one. The editor text swaps back to the drafted wording in place, the header count drops to <b>5/6</b>, and the card is marked. <strong>Restore this correction</strong> undoes that.</p>
+<pre class="say"><code>"That is not a comment thread. Rejecting rewrites the document I am
+ about to submit, and the run gets told what I refused."</code></pre>
+    <p class="note">Verified on <code>run-1786517018088</code>: the reviewer returned 6 corrections, 5 of them blockers, verdict <code>broken</code>. Every <code>after</code> string appeared verbatim in its rewrite, so the swap is a literal substitution and reverses cleanly. A correction whose text is no longer in the editor cannot be swapped, and the card says so instead of failing silently.</p>
+
+    <h4>beat 4 — answer the questions neither agent could</h4>
+    <p>The left pane is a real WYSIWYG editor, seeded from the reviewer's rewrite. Scroll to <strong>Open questions</strong> and type over them, out loud:</p>
     <ul>
       <li>"UTC or local — unresolved" → <strong>Store UTC, print local.</strong></li>
       <li>the recurrence question → <strong>The next instance appears immediately on completion.</strong></li>
       <li>the sort question → <strong><code>list</code> sorts by due date, undated todos last.</strong></li>
     </ul>
     <p>Then add one line under <strong>New tests</strong>: <code>migrating a file with no due dates keeps every id</code>.</p>
-<pre class="say"><code>"I am not filing a ticket about this. I am editing the document the
- agent is about to build from."</code></pre>
+<pre class="say"><code>"Two agents wrote around these three questions. Neither could answer
+ them, because the answer is not in the code. I am not filing a ticket
+ about it — I am editing the document the implementer builds from."</code></pre>
 
-    <h4>beat 4 — submit, and watch your words become code</h4>
+    <h4>beat 5 — submit, and watch your words become code</h4>
     <p>Press <strong>Submit spec and resume</strong>.</p>
 <pre class="say"><code>"Two things happened. The signal filled the parked node's row, then the
  run resumed. A signal alone does not wake a parked run — you need both,
  in that order, and the UI does it for you."</code></pre>
     <p>The stage strip advances to <code>implement</code>. Cycle the right pane: <strong>Diff</strong> fills in file by file, <strong>Tests</strong> streams live <code>bun test</code> output into a real terminal, <strong>Agent chat</strong> shows the transcript of whichever node you select.</p>
 
-    <h4>beat 5 — land it: two rows, two documents</h4>
+    <h4>beat 6 — land it: three rows, three documents</h4>
 <pre><code>smithers output &lt;run-id&gt; draft-spec | head -c 400
+smithers output &lt;run-id&gt; critique   | head -c 400
 smithers output &lt;run-id&gt; await-edit | tail -c 400</code></pre>
-<pre class="say"><code>"Two rows, two different documents. The agent wrote the first.
- I wrote the second. The code matches mine."</code></pre>
-    <p class="note"><b>Use <code>output</code>, not <code>inspect</code>.</b> <code>smithers inspect</code> lists node states but not their output rows, so it cannot show the two documents. The <code>await-edit</code> row ends with <code>"edited_by":"human"</code> — the provenance of the sentence that steered the build.</p>
+<pre class="say"><code>"Three rows, three documents, in that order. The planner wrote the
+ first. The reviewer rewrote it. I overrode both, and the code matches
+ the third one."</code></pre>
+    <p class="note"><b>Use <code>output</code>, not <code>inspect</code>.</b> <code>smithers inspect</code> lists node states but not their output rows, so it cannot show the three documents. The <code>await-edit</code> row carries <code>edited_by: human</code>, <code>based_on: reviewed</code>, and <code>rejected_corrections: ["c5"]</code> — the provenance of the sentence that steered the build, and the record of what the human threw out. Verified: the <code>implement</code> prompt quotes that rejected correction back and is told not to reintroduce it.</p>
     <div class="callout good"><b>Verified on a real run:</b> typing three decisions into the editor and pressing submit produced code that honours all three — <code>Date.UTC</code> parsing in <code>src/store.ts</code>, a next instance built on completion, and a <code>byDue</code> comparator that puts undated todos last and breaks ties by id. <code>bun test src</code> went from 6 tests to <b>21 pass / 0 fail</b>. The run reported <code>waiting-event</code> before the submit and <code>running</code> within a second after it.</div>
 
     <div class="callout"><b>If the UI misbehaves,</b> the same submit is one CLI command. Both keys are required:<br />
@@ -342,6 +354,7 @@ smithers inspect &lt;run&gt; --pool</code></pre>
       <tr><td>Deny seems to kill the run</td><td>You denied a different gate, or resumed from the wrong file path.</td><td><code>smithers timeline &lt;run&gt;</code>, then resume with the exact workflow path and <code>--run-id</code>.</td></tr>
       <tr><td>Run parked after a signal</td><td>Signal name and correlation id must <em>both</em> match.</td><td>Re-send with <code>--correlation spec-then-build-edit</code>, then resume.</td></tr>
       <tr><td><b>Run reports <code>cancelled</code> mid-node</b></td><td>Hit once during verification: a second <code>up --resume</code> issued seconds after the deny fought the still-live launcher process for ownership, and the loser cancelled the run.</td><td><b>Verified recovery:</b> re-run <code>smithers up &lt;workflow&gt; --run-id &lt;id&gt; --resume true --detach</code>. It restarts from the last finished node and reaches the gate normally. Give the deny a few seconds before you resume, and never resume twice.</td></tr>
+      <tr><td><b><code>ps</code> reports <code>orphaned</code>, node stuck "running"</b></td><td>Hit during verification: the launcher process died while a long agent node was in flight — closing the terminal that started it is enough. The row keeps saying <code>running</code> because nothing is left to write the next row.</td><td><b>Verified recovery:</b> <code>smithers up &lt;workflow&gt; --run-id &lt;id&gt; --resume true --detach</code>. It picks up from the last finished node. On stage, launch every run from a terminal you will not close, and check <code>smithers ps</code> at T-10.</td></tr>
       <tr><td>Agent errors mid-demo</td><td>Rate limit or credential.</td><td>Do not debug on stage. <code>smithers timeline</code> on a finished run tells the same story.</td></tr>
       <tr><td>Grafana panels read "No data"</td><td>Expected once a run finishes: <i>Active Runs</i>, <i>Active Nodes</i>, and the <i>Tools</i> row are live gauges. The <i>Traces</i> row is always empty — spans do not reach Tempo.</td><td>Stay on <i>Node Throughput</i>, <i>Node Duration</i>, <i>Node Success Rate</i>, and the Prometheus token query. Or pivot to <code>smithers inspect --pool</code> and <code>scores</code>.</td></tr>
       <tr><td>Network dies entirely</td><td>—</td><td><code>graph</code>, <code>ps</code>, <code>why</code>, <code>timeline</code>, <code>inspect</code>, <code>scores</code> all read local state. Run the talk from those.</td></tr>

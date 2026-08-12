@@ -7,7 +7,7 @@ and each one produces work that genuinely needs it.
 | --- | --- | --- |
 | [`pricing-api`](./pricing-api) | human approval gates | "A rejection is an input, not an abort." |
 +| [`flaky-monorepo`](./flaky-monorepo) | observability | "Twelve agents, one dashboard, one bill." |
-| [`todo-cli`](./todo-cli) | a custom workflow UI | "You edit the agent's plan while it waits." |
+| [`todo-cli`](./todo-cli) | a custom workflow UI | "Two agents argue about the plan; you decide, and the code follows your words." |
 
 Every repo is independently clonable. It has its own `package.json`, its own
 `bun test`, and its own seeded `.smithers/` pack. Copying one folder is the
