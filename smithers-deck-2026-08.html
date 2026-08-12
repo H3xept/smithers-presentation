@@ -732,8 +732,8 @@
             <span class="part-badge">10 min · <b>demo</b></span>
           </div>
           <h1 class="hero-title">SMITHERS<span class="l2">_</span></h1>
-          <p class="hero-sub">Your agent runs for three days. <strong style="color:var(--ink)">Something has to remember.</strong></p>
-          <p class="hero-part-note">Last talk I argued the <b>graph</b> is the artifact, not the loop. This one is the tool half: what Smithers actually is, three ways in, a live run — and why good graphs are the road to <b>models we host ourselves</b>.</p>
+          <p class="hero-sub">A control plane that keeps long agent runs alive <strong style="color:var(--ink)">across crashes, restarts, and waits on people</strong>.</p>
+          <p class="hero-part-note">Last talk covered the idea: represent agent work as a <b>graph</b>, not a loop. This one covers the tool. What Smithers is, three ways to use it, a live run, and how per-node <b>model binding</b> changes the cost structure.</p>
           <p class="hero-meta">durable · typed · resumable · measurable</p>
         </div>
         <div class="canvas-wrap"><canvas id="graphCanvas" width="760" height="760"></canvas></div>
@@ -741,19 +741,35 @@
     </div>
   </section>
 
+  <!-- 1b · THE SPINE -->
+  <section class="slide" id="spine">
+    <div class="slide-inner">
+      <p class="eyebrow">Overview · the structure of this talk</p>
+      <h2 class="headline">One design decision.<br />Four <span class="accent">properties</span>.</h2>
+      <p class="lead wide" style="margin-bottom:1.4rem">Smithers stores a run as <strong>data</strong> — every finished step a persisted, typed row — instead of keeping it alive as a process. Four properties follow directly from that decision, and each gets a section of this talk:</p>
+      <div class="stick">
+        <div class="item"><div class="t">Crashes resume instead of restarting.<span>Property 1 · durability — the row outlives the process.</span></div></div>
+        <div class="item"><div class="t">Waiting for a human costs nothing.<span>Property 2 · a parked run is a row, not a thread.</span></div></div>
+        <div class="item"><div class="t">Run history stays inspectable.<span>Property 3 · rewind, fork and replay work because every frame is stored.</span></div></div>
+        <div class="item"><div class="t">Each node binds its own model.<span>Property 4 · roles map to engines in one file, separate from the workflow.</span></div></div>
+      </div>
+      <p class="callout" style="margin-top:1.4rem">The last section covers the consequence: durable workflows tend to run continuously, continuous runs are expensive on a metered API, and property 4 is what lets you move bounded steps to cheaper or self-hosted models.</p>
+    </div>
+  </section>
+
   <!-- 2 · THE PROBLEM -->
   <section class="slide" id="s2">
     <div class="slide-inner">
-      <p class="eyebrow">The thing you already do</p>
+      <p class="eyebrow">Part 1 · the problem</p>
       <h2 class="headline">You already run agents unattended.<br />The <span class="accent">work</span> doesn't survive a restart.</h2>
       <p class="lead wide" style="margin-bottom:1.6rem">Everyone in this room has a <code style="font-family:var(--mono);color:var(--cyan)">while true</code> around a coding agent, or a script that fires one on a webhook. It works right up until it doesn't:</p>
       <div class="cols four">
         <div class="card"><span class="k">03:12</span><h3>Laptop sleeps</h3><p>Six hours of reasoning gone. The next run starts from an empty context and the half-finished branch.</p></div>
         <div class="card"><span class="k">no answer</span><h3>It needed you</h3><p>It hit an ambiguous call at 2am. Best case it stalled; worst case it guessed and committed.</p></div>
         <div class="card"><span class="k">$$$</span><h3>One model, every step</h3><p>The frontier model formatted your JSON and renamed your variables at frontier prices.</p></div>
-        <div class="card"><span class="k">?</span><h3>No idea why</h3><p>It went sideways somewhere around turn 40. There is no frame to go stand at.</p></div>
+        <div class="card"><span class="k">?</span><h3>No idea why</h3><p>It failed somewhere around turn 40, and there is no record of the state at that point.</p></div>
       </div>
-      <p class="callout">The agent isn't the missing piece. The <em>control plane around it</em> is.</p>
+      <p class="callout">None of these are agent failures. They are missing infrastructure around the agent.</p>
       <p class="note" style="margin-top:1.1rem">// scope check, so the rest of this talk is honest: Smithers is a process <b>you</b> run, not a hosted service. Close the lid and the run still stops — what changes is that every finished node is already persisted, so the next start resumes instead of restarting, and <code style="color:var(--cyan)">smithers supervise</code> auto-resumes runs whose owner process died. Running genuinely overnight still needs a machine that stays awake.</p>
     </div>
   </section>
@@ -761,7 +777,7 @@
   <!-- 3 · WHAT IT IS -->
   <section class="slide statement" id="s3">
     <div class="slide-inner">
-      <p class="eyebrow smith">The one-liner, theirs not mine</p>
+      <p class="eyebrow smith">Part 2 · what it is — the project's own description</p>
       <h2 class="headline">“Durable AI workflow orchestration<br />as a <span class="accent-smith">JSX runtime</span>.”</h2>
       <p class="lead wide">A workflow is a TypeScript JSX tree in your repo. It runs for minutes or days. Every finished step is persisted the moment it finishes, so a crash resumes at the last completed node instead of starting over. A run waiting on a human is <strong>a row in a database, not a process</strong> — it costs nothing while it waits.</p>
       <div class="chips" style="margin-top:1.6rem">
@@ -774,7 +790,7 @@
   <!-- 4 · MENTAL MODEL -->
   <section class="slide" id="s4">
     <div class="slide-inner">
-      <p class="eyebrow smith">The whole mental model, once</p>
+      <p class="eyebrow smith">Part 2 · how the scheduler works</p>
       <h2 class="headline">Every frame asks one question:<br /><span class="accent-smith">what can run now?</span></h2>
       <p class="lead wide">Smithers is a React reconciler whose host elements are tasks. Each render flattens the tree into a list of task descriptors — id, dependencies, output schema, agent, retries — and the scheduler picks the <strong>ready set</strong> out of that list.</p>
       <div class="loopflow">
@@ -802,7 +818,7 @@
   <!-- 5 · DURABILITY -->
   <section class="slide" id="s5">
     <div class="slide-inner">
-      <p class="eyebrow smith">Benefit 1 · the one that matters most</p>
+      <p class="eyebrow smith">Part 2 · property 1 · durability</p>
       <h2 class="headline">Every finished node is a <span class="accent-smith">row</span>.</h2>
       <div class="cols two">
         <div>
@@ -829,7 +845,7 @@
   <!-- 6 · THREE ROUTES -->
   <section class="slide" id="s6">
     <div class="slide-inner">
-      <p class="eyebrow">How you actually use it</p>
+      <p class="eyebrow">Part 3 · three ways to use it</p>
       <h2 class="headline">Three routes in. Take the <span class="accent">lightest</span> one that keeps the durability you need.</h2>
       <svg class="modeviz" viewBox="0 0 1180 118" role="img" aria-label="Three routes compared. Direct: a single agent turn with no run record. Oneshot: one node above one persisted row. Workflow: a fan-out and join above five persisted rows.">
         <line x1="393" y1="10" x2="393" y2="108" stroke="#232C3D" stroke-width="1"></line>
@@ -885,8 +901,8 @@
   <!-- 7 · DEMO 1 -->
   <section class="slide" id="s7">
     <div class="slide-inner">
-      <p class="eyebrow">Demo 1 · sixty seconds <span class="live">live</span></p>
-      <h2 class="headline">The cheapest possible taste: <span class="accent">oneshot</span>.</h2>
+      <p class="eyebrow">Part 3 · demo 1 <span class="live">live</span></p>
+      <h2 class="headline">The lowest-effort route: <span class="accent">oneshot</span>.</h2>
       <div class="cols two">
         <div class="code term" data-file="terminal">
 <pre><span class="ps">$</span> smithers oneshot --status
@@ -899,7 +915,7 @@
 <span class="ps">$</span> smithers ps
 <span class="ps">$</span> smithers chat        <span class="com"># what is it saying?</span>
 <span class="ps">$</span> smithers diff        <span class="com"># what did it change?</span>
-<span class="ps">$</span> smithers hijack      <span class="com"># take the wheel</span></pre>
+<span class="ps">$</span> smithers hijack      <span class="com"># resume the session yourself</span></pre>
         </div>
         <div>
           <p class="lead">No <code style="font-family:var(--mono);color:var(--cyan)">.smithers/</code>, no TSX, no schema. It picks a strong agent, runs in the background, and gives you the durable surface for free.</p>
@@ -909,7 +925,7 @@
             <li><code style="font-family:var(--mono);color:var(--cyan)">pause</code> / <code style="font-family:var(--mono);color:var(--cyan)">hijack</code> <span>— park it, or resume the session yourself in your own harness</span></li>
             <li>optional review <span>— <code style="font-family:var(--mono);color:var(--cyan)">--review on</code> adds a reviewer pass</span></li>
           </ul>
-          <p class="callout">This is the on-ramp. If oneshot is enough, you never write a graph.</p>
+          <p class="callout">If oneshot covers the task, you never need to write a workflow.</p>
         </div>
       </div>
     </div>
@@ -918,14 +934,14 @@
   <!-- 8 · YOU DON'T LEARN THE CLI -->
   <section class="slide statement" id="s8">
     <div class="slide-inner">
-      <p class="eyebrow smith">The part that surprised me</p>
+      <p class="eyebrow smith">Part 3 · who operates the CLI</p>
       <h2 class="headline">You are not the <span class="accent-smith">operator</span>.<br />Your agent is.</h2>
       <p class="lead wide">Smithers ships two documentation sets: a human one, and an agent one. The agent-facing docs open with a directive — <em>“the human talks to an AI harness; the AI runs Smithers. Do not ask the human to run commands directly.”</em> Installing is the one step you do by hand.</p>
       <div class="cols two" style="margin-top:1.4rem">
         <div class="card"><span class="k">you say</span><h3>an outcome</h3><p>“Don't stop until this is production-ready.” · “Prove this third-party service works.” · “Show me it works.” · “What happened to that run?”</p></div>
         <div class="card smith"><span class="k">your agent does</span><h3>the durable work</h3><p>Encodes tests, a reviewer gate and evals as the finish line. Watches the run, reads <code style="font-family:var(--mono)">why</code> / <code style="font-family:var(--mono)">events</code> / <code style="font-family:var(--mono)">scores</code>, and reports evidence back in plain English.</p></div>
       </div>
-      <p class="callout smith" style="margin-top:1.6rem">So the ~85 CLI commands are not your homework. <code style="font-family:var(--mono)">smithers skills add</code> installs the skill into Claude Code, Codex, Pi and Kimi, and <code style="font-family:var(--mono)">smithers mcp add</code> mounts it as an MCP server. Then you talk.</p>
+      <p class="callout smith" style="margin-top:1.6rem">You do not need to learn the ~85 CLI commands. <code style="font-family:var(--mono)">smithers skills add</code> installs the skill into Claude Code, Codex, Pi and Kimi, and <code style="font-family:var(--mono)">smithers mcp add</code> mounts it as an MCP server. Then you describe outcomes.</p>
       <p class="note">// there is also <code style="color:var(--cyan)">smithers ask "..."</code> — it answers questions about itself using your installed agent.</p>
     </div>
   </section>
@@ -933,8 +949,8 @@
   <!-- 9 · DEMO 2 -->
   <section class="slide" id="s9">
     <div class="slide-inner">
-      <p class="eyebrow">Demo 2 · authoring <span class="live">live</span></p>
-      <h2 class="headline">Don't hand-write the first draft. <span class="accent">Have it written</span>.</h2>
+      <p class="eyebrow">Part 3 · demo 2 · authoring <span class="live">live</span></p>
+      <h2 class="headline">The first draft is <span class="accent">generated</span>, not hand-written.</h2>
       <div class="cols two">
         <div class="code term" data-file="terminal">
 <pre><span class="com"># 1. one-time: seed .smithers/ into the repo</span>
@@ -956,7 +972,7 @@
         <div>
           <p class="lead"><code style="font-family:var(--mono);color:var(--cyan)">make-workflow</code> is itself a workflow. It clarifies your request into a spec, pulls the relevant docs and skills, designs the graph, <strong>pauses for your approval</strong>, scaffolds the <code style="font-family:var(--mono)">.tsx</code> and <code style="font-family:var(--mono)">.mdx</code>, then loops on <code style="font-family:var(--mono)">graph</code> until it renders.</p>
           <p class="lead">The default authoring path afterwards isn't TypeScript at all — it's editing a plain Markdown prompt in <code style="font-family:var(--mono);color:var(--cyan)">.smithers/prompts/</code>. You drop to JSX when you need branching, fan-out, or loops.</p>
-          <p class="callout">A bootstrapping orchestrator: the first graph you run is the one that writes graphs.</p>
+          <p class="callout">The output is plain TSX in your repo — review it like any other code before you run it.</p>
         </div>
       </div>
     </div>
@@ -965,7 +981,7 @@
   <!-- 10 · WHAT init DROPS -->
   <section class="slide" id="s10">
     <div class="slide-inner">
-      <p class="eyebrow">What lands in the repo</p>
+      <p class="eyebrow">Part 3 · what lands in the repo</p>
       <h2 class="headline">Four things you author. One thing you <span class="accent">never touch</span>.</h2>
       <div style="overflow-x:auto">
       <table class="maptable compact">
@@ -990,7 +1006,7 @@
   <!-- 11 · A REAL GRAPH -->
   <section class="slide" id="s11">
     <div class="slide-inner">
-      <p class="eyebrow smith">What it produced</p>
+      <p class="eyebrow smith">Part 3 · a generated workflow, read in full</p>
       <h2 class="headline">Isolate → fan out → loop until green → ask a human.</h2>
       <div class="code" data-file=".smithers/workflows/triage-and-fix.tsx">
 <pre><span class="kw">export default</span> <span class="fn">smithers</span>((ctx) <span class="pn">=&gt;</span> (
@@ -1027,7 +1043,7 @@
   <!-- 12 · VOCABULARY -->
   <section class="slide" id="s12">
     <div class="slide-inner">
-      <p class="eyebrow smith">The vocabulary</p>
+      <p class="eyebrow smith">Part 3 · the core components</p>
       <h2 class="headline">41 components. You'll use <span class="accent-smith">eight</span>.</h2>
       <div style="overflow-x:auto">
       <table class="maptable compact">
@@ -1044,7 +1060,7 @@
         </tbody>
       </table>
       </div>
-      <p class="callout smith" style="margin-top:1.3rem">And the patterns ship — don't hand-roll them. <code style="font-family:var(--mono)">ReviewLoop</code> · <code style="font-family:var(--mono)">Panel</code> · <code style="font-family:var(--mono)">Debate</code> · <code style="font-family:var(--mono)">Supervisor</code> · <code style="font-family:var(--mono)">Saga</code> · <code style="font-family:var(--mono)">Optimizer</code> · <code style="font-family:var(--mono)">Sidecar</code> · <code style="font-family:var(--mono)">MergeQueue</code> · <code style="font-family:var(--mono)">Kanban</code> · <code style="font-family:var(--mono)">DriftDetector</code> · <code style="font-family:var(--mono)">ContinueAsNew</code>.</p>
+      <p class="callout smith" style="margin-top:1.3rem">Common patterns ship as components, so you rarely build them yourself: <code style="font-family:var(--mono)">ReviewLoop</code> · <code style="font-family:var(--mono)">Panel</code> · <code style="font-family:var(--mono)">Debate</code> · <code style="font-family:var(--mono)">Supervisor</code> · <code style="font-family:var(--mono)">Saga</code> · <code style="font-family:var(--mono)">Optimizer</code> · <code style="font-family:var(--mono)">Sidecar</code> · <code style="font-family:var(--mono)">MergeQueue</code> · <code style="font-family:var(--mono)">Kanban</code> · <code style="font-family:var(--mono)">DriftDetector</code> · <code style="font-family:var(--mono)">ContinueAsNew</code>.</p>
       <p class="note">// each is ~20–40 lines of JSX over the same substrate. read one, fork it, own it.</p>
     </div>
   </section>
@@ -1052,7 +1068,7 @@
   <!-- 13 · HUMAN IN THE LOOP -->
   <section class="slide" id="s13">
     <div class="slide-inner">
-      <p class="eyebrow">Benefit 2 · the part autonomy talk skips</p>
+      <p class="eyebrow">Part 4 · property 2 · human input</p>
       <h2 class="headline">Waiting for a human is <span class="accent">a node</span>.</h2>
       <p class="lead wide">Reaching a gate persists a pending decision and parks the run: the scheduler hands out no more work in that lane and the process may exit. The decision arrives later as another row — CLI, Gateway RPC, or the approval banner in the monitor — and the next frame reads it and continues.</p>
       <div class="cols two" style="margin-top:1.2rem">
@@ -1090,7 +1106,7 @@
   <!-- 14 · TIME TRAVEL -->
   <section class="slide" id="s14">
     <div class="slide-inner">
-      <p class="eyebrow smith">Benefit 3 · the payoff of persisted state</p>
+      <p class="eyebrow smith">Part 4 · property 3 · run history</p>
       <h2 class="headline">Watch it live. Then <span class="accent-smith">rewind, fork, replay</span>.</h2>
       <p class="lead wide">Once a run is a sequence of frames with a VCS pointer attached, “what if the reviewer had been stricter?” stops being a re-run from zero and becomes a branch.</p>
       <div class="cols four" style="margin-top:1.3rem">
@@ -1103,16 +1119,16 @@
 <pre><span class="ps">$</span> smithers timeline <span class="pn">&lt;</span>run<span class="pn">&gt;</span>     <span class="com"># frames, forks, checkpoints</span>
 <span class="ps">$</span> smithers node <span class="pn">&lt;</span>run<span class="pn">&gt;</span> gate     <span class="com"># retries, tool calls, output</span>
 <span class="ps">$</span> smithers what <span class="pn">&lt;</span>run<span class="pn">&gt;</span>         <span class="com"># a cheap agent narrates what happened</span>
-<span class="ps">$</span> smithers fork <span class="pn">&lt;</span>run<span class="pn">&gt;</span> --seq 42  <span class="com"># stand at the frame it went sideways</span></pre>
+<span class="ps">$</span> smithers fork <span class="pn">&lt;</span>run<span class="pn">&gt;</span> --seq 42  <span class="com"># branch from the frame that failed</span></pre>
       </div>
-      <p class="callout smith">You stop guessing why a run went wrong and go stand at the frame where it did.</p>
+      <p class="callout smith">Instead of guessing from logs, you inspect the exact frame where the run diverged — and branch from it.</p>
     </div>
   </section>
 
   <!-- 16 · THE SEAM -->
   <section class="slide" id="s16">
     <div class="slide-inner">
-      <p class="eyebrow smith">Benefit 4 · and the hinge of the last act</p>
+      <p class="eyebrow smith">Part 4 · property 4 · model binding</p>
       <h2 class="headline">A tiny DSL for the shape. The <span class="accent-smith">runtime</span> is bound separately.</h2>
       <div class="cols two" style="align-items:center">
         <div class="seam">
@@ -1128,7 +1144,7 @@
           <div class="chips" style="margin-top:1.1rem">
             <span class="on">OmpAgent</span><span>ClaudeCodeAgent</span><span>CodexAgent</span><span>KimiAgent</span><span>GeminiAgent</span><span>PiAgent</span><span>AmpAgent</span><span>ForgeAgent</span><span>CursorAgent</span><span>OpenCodeAgent</span><span>OpenClawAgent</span><span>VibeAgent</span><span>AntigravityAgent</span><span>PoolAgent</span><span>AnthropicAgent</span><span class="local">OpenAIAgent</span><span class="local">HermesAgent</span><span>HermesCliAgent</span><span>ElizaAgent</span>
           </div>
-          <p class="note" style="margin-top:1rem">// 19 adapters behind one interface. the two in <span style="color:var(--good)">green</span> take a <code style="color:var(--cyan)">baseURL</code> — remember those, they're the whole next act.</p>
+          <p class="note" style="margin-top:1rem">// 19 adapters behind one interface. the two in <span style="color:var(--good)">green</span> accept a <code style="color:var(--cyan)">baseURL</code> — that is what part 5 builds on.</p>
         </div>
       </div>
     </div>
@@ -1137,13 +1153,13 @@
   <!-- 17 · TOKEN FURNACE -->
   <section class="slide" id="s17">
     <div class="slide-inner">
-      <p class="eyebrow">The vision · the problem it creates</p>
+      <p class="eyebrow">Part 5 · the cost of always-on</p>
       <div class="furnace">
         <div class="bignum">24/7<small>graphs × repos × triggers</small></div>
         <div>
-          <h2 class="headline" style="margin-bottom:1rem">Graphs are token furnaces.</h2>
+          <h2 class="headline" style="margin-bottom:1rem">Always-on workflows have an always-on token bill.</h2>
           <p class="lead">Nightly research. PR babysitting. Issue triage. Drift detection. Perf work. The moment durability makes always-on <em>possible</em>, you discover an enormous volume of in-flight tokens — every one of them billed on a frontier API.</p>
-          <p class="callout">Success at graph engineering is, today, a cost problem.</p>
+          <p class="callout">At this scale, the binding constraint is API cost.</p>
         </div>
       </div>
     </div>
@@ -1152,7 +1168,7 @@
   <!-- 18 · DECOMPOSITION -->
   <section class="slide" id="s18">
     <div class="slide-inner">
-      <p class="eyebrow">The vision · the escape hatch</p>
+      <p class="eyebrow">Part 5 · why small models become viable</p>
       <h2 class="headline">Good decomposition → <span class="accent">small models</span>.</h2>
       <div class="cols two">
         <div>
@@ -1177,7 +1193,7 @@
   <!-- 19 · RENT TOKENS VS BOX -->
   <section class="slide" id="s19">
     <div class="slide-inner">
-      <p class="eyebrow">The vision · the pivot</p>
+      <p class="eyebrow">Part 5 · fixed cost vs metered cost</p>
       <h2 class="headline">From renting <span class="accent">tokens</span> to renting <span class="accent">hardware</span>.</h2>
       <p class="lead wide">Decomposition put the bounded work within reach of a model small enough to run yourself. Kimi's open-weight MoE flagship is documented, in Smithers' own model notes, as “the strongest model you can self-host.” So the question opens up: <strong>what if you hosted it?</strong></p>
       <div class="cols two" style="margin-top:1.3rem">
@@ -1199,8 +1215,8 @@
   <!-- 20 · ECONOMICS -->
   <section class="slide" id="s20">
     <div class="slide-inner">
-      <p class="eyebrow">The vision · the arithmetic <span class="roadmap">point-in-time</span></p>
-      <h2 class="headline">Saturate the rig — or the <span class="accent">API</span> wins.</h2>
+      <p class="eyebrow">Part 5 · the break-even arithmetic <span class="roadmap">point-in-time</span></p>
+      <h2 class="headline">Self-hosting pays only above a <span class="accent">sustained throughput</span>.</h2>
       <div class="econ">
         <svg class="econ-chart" viewBox="0 0 720 380" role="img" aria-label="Cost per million output tokens versus sustained throughput on a log x-axis. The API is a flat dashed line at $4.40 per million. Three self-hosted configurations are downward curves crossing the API line at their break-even throughput: 4x B200 spot at about 535 TPS, 4x B200 NVFP4 at about 1,260 TPS, and 8x H200 FP8 at about 1,800 TPS. A well-tuned node sustains 10,000 to 30,000 TPS, far below the API line at well under one dollar per million.">
           <rect x="562" y="30" width="138" height="290" fill="rgba(255,138,76,0.07)"></rect>
@@ -1249,7 +1265,7 @@
   <!-- 21 · THE BIND -->
   <section class="slide" id="s21">
     <div class="slide-inner">
-      <p class="eyebrow smith">The vision · and here is the punchline</p>
+      <p class="eyebrow smith">Part 5 · the migration path</p>
       <h2 class="headline">Self-hosting is <span class="accent-smith">three lines</span> in agents.ts.</h2>
       <div class="cols two" style="margin-top:.4rem">
         <div class="code" data-file=".smithers/agents.ts">
@@ -1279,7 +1295,7 @@
 <span class="com">// you can move any more.</span></pre>
         </div>
       </div>
-      <p class="callout smith" style="margin-top:1.3rem">This is why the seam matters. Self-hosting isn't a rewrite, a migration, or a platform decision — it's a <strong>per-node</strong> decision, made in one file, and graded by an eval suite you already have.</p>
+      <p class="callout smith" style="margin-top:1.3rem">Self-hosting isn't a rewrite, a migration, or a platform decision — it's a <strong>per-node</strong> decision, made in one file, and graded by an eval suite you already have.</p>
       <p class="note">// gotcha, straight from the docs: string models default to OpenAI's <code style="color:var(--cyan)">/responses</code>, which vLLM and llama.cpp don't implement — every call 404s. <code style="color:var(--cyan)">api: "chat"</code> is the fix.</p>
     </div>
   </section>
@@ -1287,12 +1303,12 @@
   <!-- 22 · CLOSING -->
   <section class="slide" id="s22">
     <div class="slide-inner">
-      <p class="eyebrow">Three things to take away</p>
-      <h2 class="headline">What Smithers actually gives you.</h2>
+      <p class="eyebrow">Summary</p>
+      <h2 class="headline">Three things to remember.</h2>
       <div class="stick">
-        <div class="item"><div class="t">State outlives the process.<span>Every finished node is a persisted row, so a restart resumes at the last completed node. The same rows are what make <code style="font-family:var(--mono)">rewind</code>, <code style="font-family:var(--mono)">fork</code> and <code style="font-family:var(--mono)">replay</code> possible.</span></div></div>
-        <div class="item"><div class="t">A run can wait for a person at no cost.<span>A parked run holds no thread and spends no tokens. Approvals and <code style="font-family:var(--mono)">ask-human</code> are nodes, and the decision is a row someone writes later from the CLI, the RPC, or the monitor.</span></div></div>
-        <div class="item"><div class="t">Each node picks its own model and sandbox.<span>Roles are bound to engines in one file, so a cheap model can take the safe steps, and moving a role to a self-hosted endpoint is a one-line change you can measure against your eval suite.</span></div></div>
+        <div class="item"><div class="t">State outlives the process.<span>Properties 1 and 3 — every finished node is a persisted row, so a restart resumes at the last completed node, and the same rows are what make <code style="font-family:var(--mono)">rewind</code>, <code style="font-family:var(--mono)">fork</code> and <code style="font-family:var(--mono)">replay</code> possible.</span></div></div>
+        <div class="item"><div class="t">A run can wait for a person at no cost.<span>Property 2 — a parked run holds no thread and spends no tokens. Approvals and <code style="font-family:var(--mono)">ask-human</code> are nodes, and the decision is a row someone writes later from the CLI, the RPC, or the monitor.</span></div></div>
+        <div class="item"><div class="t">Each node picks its own model and sandbox.<span>Property 4 — roles are bound to engines in one file, so a cheap model can take the safe steps, and moving a role to a self-hosted endpoint is a one-line change you can measure against your eval suite.</span></div></div>
       </div>
       <p class="callout" style="margin-top:1.6rem">Try it on something small: <code style="font-family:var(--mono)">smithers oneshot "&lt;a task you were going to supervise anyway&gt;"</code>. If you run it twice, write it as a workflow.</p>
       <p class="note" style="margin-top:.9rem">// smithers.sh · github.com/smithersai/smithers · <code style="color:var(--cyan)">smithers ask "..."</code> · questions?</p>
@@ -1311,9 +1327,9 @@
       <div class="runbook">
         <div class="rb"><div class="clock">-10m</div><div class="what"><b>Before you start.</b> <code>smithers oneshot --status</code> must print usable agents. <code>smithers ps</code> must be reachable. Have a repo with <code>.smithers/</code> already seeded and one <em>real</em> small task picked out.</div></div>
         <div class="rb"><div class="clock">-2m</div><div class="what"><b>Pre-warm demo 1.</b> Launch the oneshot before the talk so there's a run with real output to show. Fresh runs are ten minutes of watching a spinner.</div></div>
-        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Demo 1 · slide 07.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
-        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Demo 2 · slide 09.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> live — it renders the whole graph in a second and it's the most convincing thing in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
-        <div class="rb"><div class="clock">06:00</div><div class="what"><b>The crash test · slide 05.</b> If demo 1 is still running: <code>Ctrl-C</code> it, then <code>smithers up ... --resume true</code>. Ninety seconds, and it lands the whole durability argument better than the slide does.</div></div>
+        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Demo 1 · slide 08.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
+        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Demo 2 · slide 10.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> live — it renders the whole graph in a second and it's the most convincing thing in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
+        <div class="rb"><div class="clock">06:00</div><div class="what"><b>The crash test · slide 06.</b> If demo 1 is still running: <code>Ctrl-C</code> it, then <code>smithers up ... --resume true</code>. Ninety seconds, and it lands the whole durability argument better than the slide does.</div></div>
         <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
       </div>
       </div>
@@ -1405,7 +1421,7 @@
     </svg>
     <span>Smithers · Aug 2026</span>
   </div>
-  <div class="counter"><b id="cur">01</b> / <span id="total">23</span></div>
+  <div class="counter"><span id="actlabel" style="color:var(--ink-faint);margin-right:1.1rem"></span><b id="cur">01</b> / <span id="total">23</span></div>
 </div>
 
 <div class="progress" id="bar"></div>
@@ -1468,10 +1484,26 @@
     const bar = document.getElementById('bar');
     totalEl.textContent = String(total).padStart(2, '0');
 
+    // narrative breadcrumb: slide id → act label in the chrome
+    const actEl = document.getElementById('actlabel');
+    const ACTS = {
+      spine: 'overview',
+      s2: 'part 1 · the problem',
+      s3: 'part 2 · what it is', s4: 'part 2 · what it is', s5: 'part 2 · property 1/4',
+      s6: 'part 3 · using it', s7: 'part 3 · using it', s8: 'part 3 · using it',
+      s9: 'part 3 · using it', s10: 'part 3 · using it', s11: 'part 3 · using it', s12: 'part 3 · using it',
+      s13: 'part 4 · property 2/4', s14: 'part 4 · property 3/4', s16: 'part 4 · property 4/4',
+      s17: 'part 5 · cost', s18: 'part 5 · cost', s19: 'part 5 · cost',
+      s20: 'part 5 · cost', s21: 'part 5 · cost',
+      s22: 'summary',
+      s23: 'appendix', s24: 'appendix', s15: 'appendix',
+    };
+
     function show(n) {
       i = Math.max(0, Math.min(total - 1, n));
       slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
       curEl.textContent = String(i + 1).padStart(2, '0');
+      actEl.textContent = ACTS[slides[i].id] || '';
       bar.style.width = ((i + 1) / total) * 100 + '%';
       if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
     }

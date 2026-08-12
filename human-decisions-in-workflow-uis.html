@@ -226,6 +226,7 @@
       <li><a href="#s2">Making a human decide, three levels of effort</a></li>
       <li><a href="#s3">The exact payloads — and the two gotchas</a></li>
       <li><a href="#s4">Yes/no vs. structured input: pick the right node</a></li>
+      <li><a href="#s4b">Multi-select: yes, via <code>rank</code></a></li>
       <li><a href="#s5">The two <code>triage.tsx</code> files</a></li>
       <li><a href="#s6">Who is allowed to decide</a></li>
     </ol>
@@ -375,9 +376,9 @@
 }</code></pre>
 
   <div class="box gotcha">
-    <span class="t">Gotcha 1 · the gate carries no metadata</span>
-    <p><code>&lt;Approval request&gt;</code> accepts <code>{ title, summary, metadata }</code>, but the summary the Gateway hands your UI has <strong>no <code>metadata</code> field</strong> — only the title and summary strings. So a UI cannot render “here are the 14 tickets, tick the ones to fix” out of the gate itself.</p>
-    <p><strong>Design consequence:</strong> put the decision payload in the <em>upstream task's output</em> and read it with <code>useGatewayNodeOutput(runId, nodeId)</code> (RPC <code>getNodeOutput</code>). The gate then carries only the verdict. This is the right split anyway — the payload is typed by a Zod schema and persisted as a row, where the gate's free-form metadata would be neither.</p>
+    <span class="t">Gotcha 1 · options reach the UI, arbitrary metadata does not</span>
+    <p><code>options</code> <strong>are</strong> delivered — the Gateway parses them out of the stored request into the approval record, which is how a select or rank UI renders its choices at all. What the typed <code>GatewayApprovalSummary</code> omits is your free-form <code>request.metadata</code>: the hook hands you <code>requestTitle</code> and <code>requestSummary</code> and nothing else. (The MCP <code>list_pending_approvals</code> tool does return the full <code>request</code> as <code>unknown</code>, so the data is on disk — it is the React hook's shape that narrows it.)</p>
+    <p><strong>Design consequence:</strong> use <code>options</code> for the choosable keys, and put the <em>rich</em> per-item context — diffs, ticket bodies, risk — in the <em>upstream task's output</em>, read with <code>useGatewayNodeOutput(runId, nodeId)</code>. Join the two on the option key. That keeps the payload typed by a Zod schema and persisted as a row, which free-form metadata would be neither.</p>
   </div>
 
   <div class="box gotcha">
@@ -387,7 +388,7 @@
 
   <h2 id="s4"><span class="n">04</span>Yes/no vs. structured input</h2>
 
-  <p>This is the part that decides your graph's shape, so it is worth being precise about what is documented as browser-reachable. There are three human-facing nodes, and they do not have equal UI support:</p>
+  <p>This is the part that decides your graph's shape. Everything below was verified by running it against a live Gateway on v0.31.0, not read off the docs — the docs never spell the <code>decision</code> param type, which is exactly where the confusion lives.</p>
 
   <table>
     <thead><tr><th>Node</th><th>Human returns</th><th>Reachable from a browser UI?</th></tr></thead>
@@ -395,17 +396,17 @@
       <tr>
         <td><code>&lt;Approval&gt;</code></td>
         <td><code>{ approved, note, decidedBy, decidedAt }</code></td>
-        <td><strong>Yes</strong> — <code>listApprovals</code> + <code>submitApproval</code>, plus three prebuilt widgets. <span class="chip">first class</span></td>
+        <td><strong>Yes</strong> — <code>listApprovals</code> + <code>submitApproval</code>, plus three prebuilt widgets. <span class="chip">verified</span></td>
       </tr>
       <tr>
         <td><code>&lt;WaitForEvent&gt;</code> / <code>&lt;Signal&gt;</code></td>
         <td>an arbitrary JSON <code>payload</code></td>
-        <td><strong>Yes</strong> — <code>submitSignal({ runId, correlationKey, payload })</code>. <span class="chip">first class</span></td>
+        <td><strong>Yes</strong> — <code>submitSignal({ runId, correlationKey, payload })</code>, <code>payload</code> is unconstrained. <span class="chip">verified</span></td>
       </tr>
       <tr>
         <td><code>&lt;HumanTask&gt;</code></td>
         <td>JSON matching the node's Zod output schema</td>
-        <td>No documented Gateway RPC. The documented answer path is the CLI. <span class="chip gap">CLI only</span></td>
+        <td>No Gateway RPC exists. Of the 41 methods, none answers a human request — the path is the CLI. <span class="chip gap">CLI only</span></td>
       </tr>
     </tbody>
   </table>
@@ -442,7 +443,54 @@
 
   <p class="callout warn">The <code>correlationKey</code> you send must equal the node's <code>correlationId</code>. The Gateway enforces the match, so a typo is a rejected write rather than a silently lost decision.</p>
 
-  <p>And <code>&lt;Approval&gt;</code> itself has two richer modes — <code>mode="select"</code> persists <code>{ selected, notes }</code> and <code>mode="rank"</code> persists <code>{ ranked, notes }</code>, both driven by an <code>options: ApprovalOption[]</code> list. Worth knowing they exist; note that every documented <code>submitApproval</code> example sends the approve/deny shape, so if you need select or rank <em>from the browser</em>, verify that path against your own version before building on it.</p>
+  <h2 id="s4b"><span class="n">04b</span>Multi-select: yes, via <code>rank</code></h2>
+
+  <p>There is no <code>mode="multi-select"</code>, which makes it look like a picked <em>set</em> is not expressible. It is. <code>mode="rank"</code> is validated as <strong>a non-empty subset of the declared option keys</strong> — nothing requires you to rank <em>all</em> of them, and nothing inspects the order. A rank decision carrying two of four keys is a multi-select with a misleading name.</p>
+
+  <p>The Gateway's validator is the whole story, and it is eleven lines:</p>
+
+  <p class="file">@smithers-orchestrator/server/src/gateway.js · validateApprovalDecision</p>
+<pre><code><span class="kw">if</span> (request.mode === <span class="str">"select"</span>) {
+  <span class="kw">const</span> selected = <span class="fn">asString</span>(payload?.selected)      <span class="com">// a STRING, or reject</span>
+  <span class="kw">if</span> (!selected) <span class="kw">return</span> { ok: <span class="kw">false</span>, message: <span class="str">"select approvals require decision.selected"</span> }
+  <span class="kw">if</span> (request.options.length &gt; 0 &amp;&amp; !request.options.<span class="fn">some</span>((o) =&gt; o.key === selected))
+    <span class="kw">return</span> { ok: <span class="kw">false</span>, message: `Unknown selection: ${selected}` }
+}
+<span class="kw">if</span> (request.mode === <span class="str">"rank"</span>) {
+  <span class="kw">const</span> ranked = <span class="fn">parseStringArray</span>(payload?.ranked)   <span class="com">// an ARRAY of keys</span>
+  <span class="kw">if</span> (ranked.length === <span class="hl">0</span>) <span class="kw">return</span> { ok: <span class="kw">false</span>, message: <span class="str">"rank approvals require decision.ranked"</span> }
+  <span class="kw">const</span> allowed = <span class="kw">new</span> <span class="fn">Set</span>(request.options.<span class="fn">map</span>((o) =&gt; o.key))
+  <span class="kw">if</span> (allowed.size &gt; 0 &amp;&amp; ranked.<span class="fn">some</span>((v) =&gt; !allowed.<span class="fn">has</span>(v)))
+    <span class="kw">return</span> { ok: <span class="kw">false</span>, message: <span class="str">"rank approval included unknown options"</span> }
+}</code></pre>
+
+  <p>Read the <code>rank</code> branch as a set contract: <strong>non-empty</strong>, and <strong>every member is a declared key</strong>. No length check against <code>options</code>, no ordering check. So:</p>
+
+  <p class="file">.smithers/ui/triage.tsx — a working multi-select</p>
+<pre><code><span class="fn">submitApproval</span>({
+  runId, nodeId: <span class="str">"subset"</span>, iteration: 0,
+  decision: { approved: <span class="kw">true</span>, value: { ranked: checkedKeys } },  <span class="com">// 2 of 4 is fine</span>
+})</code></pre>
+
+  <div class="box smith">
+    <span class="t">verified end to end · v0.31.0</span>
+    <p>A gate declared <code>mode="rank"</code> with four options <code>alpha·beta·gamma·delta</code>, submitted <code>{ ranked: ["gamma","alpha"] }</code>, landed in the workflow's output row as <code>ranked = ["gamma","alpha"]</code>, exactly as sent — subset preserved, my order preserved.</p>
+    <p>The same run submitted <code>{ selected: ["alpha","gamma"] }</code> to a <code>mode="select"</code> gate and the Gateway rejected it: <code>INVALID_REQUEST · select approvals require decision.selected</code>. So a multi-select under <code>select</code> fails loudly at the write — it is never silently truncated.</p>
+  </div>
+
+  <h3>Nested or flat, both work</h3>
+  <p>The TUI sends <code>{ approved: true, value: { selected } }</code>; the component reads <code>decision.selected</code> flat. Those agree because the Gateway unwraps one level first:</p>
+<pre><code><span class="kw">const</span> decision = stableDecision &amp;&amp; <span class="str">"value"</span> <span class="kw">in</span> stableDecision ? stableDecision.value : params.decision</code></pre>
+  <p>So <code>{approved, value:{ranked}}</code> and <code>{approved, ranked}</code> are equivalent on the wire. The stored <code>decision_json</code> is the unwrapped form either way — I confirmed <code>{"ranked":["gamma","alpha"]}</code> on disk.</p>
+
+  <h3>Where the real ceiling is</h3>
+  <p>Transport is not the limit: the RPC schema declares <code>decision</code> with <code>additionalProperties: true</code>, and persistence is a plain <code>JSON.stringify</code> of whatever survived validation. The limit is in <code>Approval.js</code>, where <code>computeDecision</code> reads the stored row back and narrows it to <strong>exactly three shapes</strong>:</p>
+  <ul>
+    <li><code>{ approved, note, decidedBy, decidedAt }</code> — built field-by-field, so extra keys you submitted are dropped here</li>
+    <li><code>{ selected: string, notes }</code> — <code>typeof … === "string"</code> or <code>""</code></li>
+    <li><code>{ ranked: string[], notes }</code> — filtered to strings</li>
+  </ul>
+  <p>This is why a custom <code>outputSchema</code> does not buy you an arbitrary payload in <code>approve</code> mode: the component only ever emits those four fields, so a schema demanding more fails validation rather than receiving more. <strong><code>&lt;Approval&gt;</code> is a three-shape funnel, not a form.</strong> When you need a genuinely arbitrary shape — nested objects, per-item fields, free text alongside a set — that is what <code>&lt;WaitForEvent&gt;</code> + <code>submitSignal</code> is for, and its <code>payload</code> has no validator at all.</p>
 
   <h2 id="s5"><span class="n">05</span>The two <code>triage.tsx</code> files</h2>
 
@@ -509,7 +557,7 @@
   </div>
 
   <footer>
-    Sourced from the Smithers agent docs bundle (<code>smithers docs-full</code>, 21,612 lines, v0.31.0) — Custom Workflow UIs, Gateway RPC (41 methods), Gateway React hook reference, Gateway UI component table, and the <code>&lt;Approval&gt;</code> / <code>&lt;HumanTask&gt;</code> / <code>&lt;Signal&gt;</code> component pages.<br />
+    Claims here are grounded in the installed v0.31.0 source, not just the docs bundle: <code>components/src/components/Approval.js</code> (<code>computeDecision</code> narrowing), <code>server/src/gateway.js</code> (<code>validateApprovalDecision</code>, the <code>value</code> unwrap), <code>engine/src/approvals.js</code> (<code>serializeDecision</code>), <code>protocol/src/gatewayRpcTypes.ts</code> (<code>SubmitApprovalRequest</code>), and <code>tui/src/modes/approvalUtils.ts</code> (<code>buildApprovalDecision</code>). The multi-select and rejected-array results in §04b were produced by running two real workflows against a live Gateway and reading the output rows out of <code>smithers.db</code>.<br />
     <a href="https://smithers.sh">smithers.sh</a> · <a href="https://github.com/smithersai/smithers">github.com/smithersai/smithers</a> · <code>smithers ask "..."</code>
   </footer>
 

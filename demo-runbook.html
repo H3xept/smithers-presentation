@@ -1,0 +1,308 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Presenter runbook — demoing the three Smithers example repos</title>
+<meta name="description" content="How to demo examples/pricing-api, examples/flaky-monorepo, and examples/todo-cli in a ten-minute talk: pre-flight, terminal layout, the exact commands typed on stage, and the failure playbook." />
+
+<style>
+  :root {
+    --ground:#0B0E14; --ground-2:#121826; --ground-3:#19212F; --line:#232C3D;
+    --ink:#E9ECF3; --ink-dim:#98A2B6; --ink-faint:#5B6679;
+    --ember:#FF8A4C; --ember-2:#FFB37E; --cyan:#62CBDA; --smith:#5B93FF; --smith-2:#9CBBFF;
+    --good:#6FD08C; --warn:#E9C46A; --bad:#E06B6B;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin:0; background:var(--ground); color:var(--ink); font-family:var(--sans); line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:1080px; margin:0 auto; padding:clamp(2rem,6vw,4.5rem) clamp(1.2rem,4vw,3rem) 8rem; }
+
+  .eyebrow { font-family:var(--mono); font-size:.72rem; letter-spacing:.26em; text-transform:uppercase; color:var(--ember); margin:0 0 1.1rem; display:flex; align-items:center; gap:.8rem; }
+  .eyebrow::before { content:""; width:1.6rem; height:1px; background:currentColor; opacity:.8; }
+  .eyebrow.cyan{color:var(--cyan)} .eyebrow.smith{color:var(--smith)} .eyebrow.good{color:var(--good)} .eyebrow.warn{color:var(--warn)}
+
+  h1 { font-size:clamp(1.9rem,4.6vw,2.9rem); line-height:1.06; letter-spacing:-.02em; margin:0 0 1rem; font-weight:650; }
+  h2 { font-size:clamp(1.3rem,3vw,1.8rem); line-height:1.15; letter-spacing:-.015em; margin:0 0 .8rem; font-weight:620; }
+  h3 { font-size:1.02rem; margin:1.8rem 0 .5rem; font-weight:600; }
+  h4 { font-family:var(--mono); font-size:.7rem; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-faint); margin:1.7rem 0 .6rem; font-weight:600; }
+  p { margin:0 0 1rem; color:var(--ink-dim); }
+  p.lead { font-size:1.06rem; color:var(--ink); }
+  strong { color:var(--ink); font-weight:600; }
+  em { color:var(--ink); font-style:italic; }
+  code { font-family:var(--mono); font-size:.85em; background:var(--ground-3); border:1px solid var(--line); border-radius:4px; padding:.06em .32em; color:var(--ember-2); }
+  pre { font-family:var(--mono); font-size:.79rem; line-height:1.6; background:var(--ground-2); border:1px solid var(--line); border-left:2px solid var(--smith); border-radius:6px; padding:.9rem 1rem; overflow-x:auto; color:var(--ink); margin:0 0 1rem; }
+  pre code { background:none; border:0; padding:0; color:inherit; font-size:1em; }
+  pre.say { border-left-color:var(--ember); }
+  ul,ol { margin:0 0 1rem; padding-left:1.2rem; color:var(--ink-dim); }
+  li { margin:.28rem 0; }
+  li::marker { color:var(--ember); }
+  hr { border:0; border-top:1px solid var(--line); margin:3rem 0; }
+
+  .card { background:var(--ground-2); border:1px solid var(--line); border-radius:10px; padding:clamp(1.1rem,2.6vw,1.7rem); margin:0 0 1.3rem; }
+  .card.ember{border-left:3px solid var(--ember)} .card.cyan{border-left:3px solid var(--cyan)}
+  .card.smith{border-left:3px solid var(--smith)} .card.good{border-left:3px solid var(--good)} .card.warn{border-left:3px solid var(--warn)}
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1.2rem; }
+
+  table { width:100%; border-collapse:collapse; font-size:.87rem; margin:0 0 1.3rem; }
+  th,td { text-align:left; padding:.55rem .65rem; border-bottom:1px solid var(--line); vertical-align:top; color:var(--ink-dim); }
+  th { font-family:var(--mono); font-size:.67rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); font-weight:600; }
+  td:first-child { color:var(--ink); font-weight:550; }
+  td.mono, th.mono { font-family:var(--mono); font-size:.8rem; }
+
+  .beat { display:grid; grid-template-columns:5.2rem 1fr; gap:.9rem; padding:.6rem 0; border-bottom:1px solid var(--line); font-size:.92rem; color:var(--ink-dim); }
+  .beat b { font-family:var(--mono); font-size:.75rem; color:var(--ember); letter-spacing:.05em; }
+  .beat.cyan b { color:var(--cyan); }
+  .beat.smith b { color:var(--smith); }
+
+  .callout { border:1px dashed var(--line); border-radius:8px; padding:.85rem 1.05rem; margin:0 0 1.2rem; font-size:.9rem; color:var(--ink-dim); background:rgba(91,147,255,.05); }
+  .callout b { color:var(--smith-2); }
+  .callout.warn { background:rgba(233,196,106,.06); } .callout.warn b { color:var(--warn); }
+  .callout.bad { background:rgba(224,107,107,.06); } .callout.bad b { color:var(--bad); }
+  .callout.good { background:rgba(111,208,140,.06); } .callout.good b { color:var(--good); }
+
+  .tag { display:inline-block; font-family:var(--mono); font-size:.65rem; letter-spacing:.14em; text-transform:uppercase; border:1px solid var(--line); background:var(--ground-3); color:var(--ink-dim); border-radius:999px; padding:.2rem .58rem; margin:0 .3rem .3rem 0; }
+  .tag.ember{color:var(--ember);border-color:rgba(255,138,76,.4)} .tag.cyan{color:var(--cyan);border-color:rgba(98,203,218,.4)}
+  .tag.smith{color:var(--smith);border-color:rgba(91,147,255,.4)} .tag.good{color:var(--good);border-color:rgba(111,208,140,.4)}
+  .tag.warn{color:var(--warn);border-color:rgba(233,196,106,.4)} .tag.bad{color:var(--bad);border-color:rgba(224,107,107,.4)}
+
+  .toc { display:flex; flex-wrap:wrap; gap:.5rem; margin:1.4rem 0 0; }
+  .toc a { font-family:var(--mono); font-size:.73rem; text-decoration:none; color:var(--ink-dim); border:1px solid var(--line); border-radius:999px; padding:.34rem .78rem; }
+  .toc a:hover { color:var(--ink); border-color:var(--ember); }
+  footer { color:var(--ink-faint); font-family:var(--mono); font-size:.73rem; border-top:1px solid var(--line); padding-top:1.3rem; margin-top:3rem; }
+  .num { font-family:var(--mono); color:var(--ink-faint); font-size:.8em; margin-right:.5rem; }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Presenter runbook · Smithers · Aug 2026</p>
+  <h1>How to demo the three repos.</h1>
+  <p class="lead">Three demos do not fit live in a ten-minute talk. Two of them park durably on a human, which is exactly what makes them safe to pre-warm. So: <strong>pre-warm everything, type three commands per demo on stage, and keep the third repo for questions.</strong></p>
+
+  <div class="toc">
+    <a href="#why">the shape</a>
+    <a href="#pre">pre-flight</a>
+    <a href="#tabs">terminal layout</a>
+    <a href="#d1">demo 1 · the gate</a>
+    <a href="#d2">demo 2 · the UI</a>
+    <a href="#d3">demo 3 · the trace</a>
+    <a href="#fail">failure playbook</a>
+    <a href="#reset">reset</a>
+  </div>
+
+  <hr />
+
+  <section id="why">
+    <p class="eyebrow">The shape</p>
+    <h2>One live moment each, and nothing else</h2>
+    <p>Every repo has a long agent phase and a short human phase. The agent phase is a spinner. The human phase is the demo. Your whole job before the talk is to move each run <em>past</em> the spinner so the stage time is only the human phase.</p>
+
+    <table>
+      <tr><th>repo</th><th>agent phase (pre-warm this)</th><th>on stage</th><th>live time</th></tr>
+      <tr><td>pricing-api</td><td><code>assess</code> + <code>propose</code>, then it parks on the gate</td><td>deny, resume, approve</td><td>~2:00</td></tr>
+      <tr><td>todo-cli</td><td><code>draft-spec</code>, then it parks on <code>await-edit</code></td><td>edit the spec, submit, watch</td><td>~2:30</td></tr>
+      <tr><td>flaky-monorepo</td><td>the whole run, twelve lanes, no park</td><td>Grafana waterfall + <code>scores</code></td><td>~1:30, or Q&amp;A only</td></tr>
+    </table>
+
+    <div class="callout"><b>Why this works and a live launch does not:</b> a parked run is a database row, not a pinned process. You can park it an hour before you speak, close the laptop, and the gate is still waiting when you open it. The pre-warm is not a cheat — it is the feature.</div>
+
+    <h4>recommended slotting against the deck</h4>
+    <table>
+      <tr><th>slide</th><th>clock</th><th>what runs</th></tr>
+      <tr><td>07</td><td>03:30</td><td><strong>Demo 1 — pricing-api.</strong> The deny path. Best argument in the talk.</td></tr>
+      <tr><td>09</td><td>05:00</td><td><strong>Demo 2 — todo-cli.</strong> <code>smithers graph</code> first, then the custom UI.</td></tr>
+      <tr><td>24</td><td>Q&amp;A</td><td><strong>Demo 3 — flaky-monorepo.</strong> Only if someone asks about cost or observability. Otherwise show the Grafana screenshot on the appendix slide.</td></tr>
+    </table>
+    <p>If you only get one demo: run <strong>demo 2</strong>. Editing an agent's plan mid-run is the thing nobody in the room has seen before.</p>
+  </section>
+
+  <hr />
+
+  <section id="pre">
+    <p class="eyebrow good">Pre-flight</p>
+    <h2>The timeline before you speak</h2>
+
+    <div class="beat"><b>T-40</b> <code>smithers oneshot --status</code> must print at least one usable agent. If it does not, no demo runs. Fix credentials first.</div>
+    <div class="beat"><b>T-35</b> Start the long one. <code>cd examples/flaky-monorepo</code>, then <code>smithers observability --detach</code> and launch the run (stage 2 in its <code>DEMO.md</code>). Twelve lanes take a while; it must be finished before you start talking.</div>
+    <div class="beat"><b>T-20</b> Park demo 1. <code>cd examples/pricing-api</code> → <code>smithers up .smithers/workflows/price-change.tsx --detach</code>. Note the run id.</div>
+    <div class="beat"><b>T-20</b> Park demo 2. <code>cd examples/todo-cli</code> → <code>smithers up .smithers/workflows/spec-then-build.tsx -d</code>. Note the run id.</div>
+    <div class="beat"><b>T-10</b> Confirm both parked: <code>smithers why &lt;run-id&gt;</code> in each repo. Demo 1 must name <code>gate</code>. Demo 2 must name <code>await-edit</code>.</div>
+    <div class="beat"><b>T-8</b> Open <code>smithers ui</code> in the todo-cli tab. Leave the browser tab open with the spec already loaded. Do not submit it.</div>
+    <div class="beat"><b>T-5</b> Screenshot the Grafana trace waterfall and the token panel. That screenshot is your Docker insurance.</div>
+    <div class="beat"><b>T-2</b> Font size up. Close every other browser tab. <code>clear</code> all three terminals.</div>
+
+    <div class="callout warn"><b>The one thing to write down:</b> both run ids, on paper, next to you. Every stage command needs one, and <code>smithers ps</code> in the wrong directory will not find it.</div>
+  </section>
+
+  <hr />
+
+  <section id="tabs">
+    <p class="eyebrow">Terminal layout</p>
+    <h2>Three tabs, one per repo, pre-<code>cd</code>'d</h2>
+    <p>Each repo carries <em>its own</em> <code>.smithers/</code> pack and its own run store. Every command must run from inside that repo's directory. A command typed one directory up finds no runs, and on stage that reads as a broken product.</p>
+<pre><code>tab 1  cd ~/Desktop/lifi/smithers-presentation/examples/pricing-api
+tab 2  cd ~/Desktop/lifi/smithers-presentation/examples/todo-cli
+tab 3  cd ~/Desktop/lifi/smithers-presentation/examples/flaky-monorepo</code></pre>
+    <p>Never <code>cd</code> on stage. Switch tabs instead.</p>
+  </section>
+
+  <hr />
+
+  <section id="d1">
+    <p class="eyebrow ember">Demo 1 · slide 07 · tab 1</p>
+    <h2><span class="num">01</span>pricing-api — the gate that says no</h2>
+    <p><span class="tag ember">2 minutes</span><span class="tag">pre-warmed and parked</span><span class="tag good">no Docker</span></p>
+
+    <p>The run is already parked on <code>gate</code>. It has read the change request, read both callers of <code>quote()</code>, and drafted a proposal. It has written nothing to the repo.</p>
+
+    <h4>beat 1 — show that waiting is free</h4>
+<pre><code>smithers ps
+smithers why &lt;run-id&gt;</code></pre>
+<pre class="say"><code>"This run is not finished and it is not stuck. It is parked on me.
+ It has been parked for twenty minutes and it cost nothing to wait,
+ because a parked run is a row, not a process."</code></pre>
+
+    <h4>beat 2 — reject it, with a reason</h4>
+<pre><code>smithers deny &lt;run-id&gt; --node gate --by leo \
+  --note "Mid-cycle accounts must keep the old price until renewal."
+
+smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resume true</code></pre>
+<pre class="say"><code>"My rejection and my note are now a decision row in the database.
+ The gate uses onDeny=continue, so a rejection is data, not a crash.
+ Watch what it does with the sentence I just wrote."</code></pre>
+    <p>The run re-enters the review loop. <code>revise</code> reads the note and drafts a second proposal that honours it, then the same gate asks again. This is the beat the whole demo exists for — do not rush past it.</p>
+
+    <h4>beat 3 — approve, and only now does anything change</h4>
+<pre><code>smithers approve &lt;run-id&gt; --node gate --by leo --note "Mid-cycle rule accepted."
+smithers up .smithers/workflows/price-change.tsx --run-id &lt;run-id&gt; --resume true</code></pre>
+<pre class="say"><code>"Only now does apply run. It writes the code, the price table, and a
+ new migration, then runs the tests. Deciding and acting were separate
+ nodes the whole time, which is why my rejection was reversible."</code></pre>
+
+    <h4>beat 4 — the audit trail, if you have ten seconds</h4>
+<pre><code>smithers timeline &lt;run-id&gt;</code></pre>
+<pre class="say"><code>"Proposal, rejection, my note, revision, approval. Six months from now
+ this is the answer to 'why did the price change?'"</code></pre>
+
+    <div class="callout"><b>Optional, only with slack:</b> the migration has its own second gate behind <code>--input '{"migrationGate":true}'</code>. Two gates, two owners: approve the price, hold the schema. It needs a fresh run, so it is a bonus, not a beat.</div>
+  </section>
+
+  <hr />
+
+  <section id="d2">
+    <p class="eyebrow smith">Demo 2 · slide 09 · tab 2 + browser</p>
+    <h2><span class="num">02</span>todo-cli — you edit the agent's plan</h2>
+    <p><span class="tag smith">2.5 minutes</span><span class="tag">pre-warmed and parked</span><span class="tag good">no Docker</span></p>
+
+    <h4>beat 1 — the graph, in one second</h4>
+<pre><code>smithers graph .smithers/workflows/spec-then-build.tsx</code></pre>
+<pre class="say"><code>"Four nodes. Draft a spec, wait for a human, implement, test.
+ That rendered without calling a model — the graph is a contract
+ you can check before you spend a token."</code></pre>
+
+    <h4>beat 2 — the UI ships with the workflow</h4>
+    <p>Switch to the browser tab you opened at T-8. If you need it again: <code>smithers ui &lt;run-id&gt;</code>.</p>
+<pre class="say"><code>"This is not the Smithers dashboard. This page ships with the workflow,
+ in .smithers/ui/spec-then-build.tsx, and it is composed from shipped
+ components. Connection state, elapsed, tokens, tests passing, and a
+ stage strip bound to live node status."</code></pre>
+    <p>The stage strip shows <code>draft spec</code> done and the run sitting on <code>human edit</code>.</p>
+
+    <h4>beat 3 — answer the questions the agent could not</h4>
+    <p>The left pane is a real WYSIWYG editor seeded from the <code>draft-spec</code> output. Scroll to <strong>Open questions</strong> and type over them, out loud:</p>
+    <ul>
+      <li>"UTC or local — unresolved" → <strong>Store UTC, print local.</strong></li>
+      <li>the recurrence question → <strong>The next instance appears immediately on completion.</strong></li>
+      <li>the sort question → <strong><code>list</code> sorts by due date, undated todos last.</strong></li>
+    </ul>
+    <p>Then add one line under <strong>New tests</strong>: <code>migrating a file with no due dates keeps every id</code>.</p>
+<pre class="say"><code>"I am not filing a ticket about this. I am editing the document the
+ agent is about to build from."</code></pre>
+
+    <h4>beat 4 — submit, and watch your words become code</h4>
+    <p>Press <strong>Submit spec and resume</strong>.</p>
+<pre class="say"><code>"Two things happened. The signal filled the parked node's row, then the
+ run resumed. A signal alone does not wake a parked run — you need both,
+ in that order, and the UI does it for you."</code></pre>
+    <p>The stage strip advances to <code>implement</code>. Cycle the right pane: <strong>Diff</strong> fills in file by file, <strong>Tests</strong> streams live <code>bun test</code> output into a real terminal, <strong>Agent chat</strong> shows the transcript of whichever node you select.</p>
+
+    <h4>beat 5 — land it</h4>
+<pre><code>smithers inspect &lt;run-id&gt;</code></pre>
+<pre class="say"><code>"Two rows, two different documents. The agent wrote the first.
+ I wrote the second. The code matches mine."</code></pre>
+
+    <div class="callout"><b>If the UI misbehaves,</b> the same submit is one CLI command. Both keys are required:<br />
+    <code>smithers signal &lt;run-id&gt; spec.edited --correlation spec-then-build-edit --data '{"markdown":"…","editedBy":"leo"}'</code> then <code>smithers up … --run-id &lt;run-id&gt; --resume true</code>. Omitting <code>--correlation</code> silently parks forever.</div>
+  </section>
+
+  <hr />
+
+  <section id="d3">
+    <p class="eyebrow cyan">Demo 3 · appendix slide 24 · tab 3 + Grafana</p>
+    <h2><span class="num">03</span>flaky-monorepo — twelve spans and one liar</h2>
+    <p><span class="tag cyan">1.5 minutes</span><span class="tag warn">needs Docker</span><span class="tag">run finished before the talk</span></p>
+
+    <p>Keep this one for questions about cost, model choice, or "how do you know it worked". It is the weakest live demo — the run takes too long and it depends on Docker — and the strongest answer to a skeptical question.</p>
+
+    <h4>beat 1 — the fixture, in one line</h4>
+<pre><code>bun test packages</code></pre>
+<pre class="say"><code>"Twelve packages, twelve real defects, and the tests already know what
+ correct looks like. One of them also fails to type-check, and the test
+ suite cannot see that."</code></pre>
+
+    <h4>beat 2 — the waterfall</h4>
+    <p>Grafana at <code>localhost:3001</code>, Tempo data source, search the trace by service name <code>harden-packages-strong</code>. Point at three things, in this order:</p>
+    <ol>
+      <li><strong>Twelve spans, one start time.</strong> That is what fan-out looks like.</li>
+      <li><strong>One lane with a nested retry.</strong> Only <code>pkg-07</code> has a second fix/verify pair, because it races the wall clock and lost. Eleven packages did not pay for one flaky test.</li>
+      <li><strong>Tokens by model.</strong> Cost is a dimension of the dashboard, not a spreadsheet on the side.</li>
+    </ol>
+
+    <h4>beat 3 — the grade, and the trade</h4>
+<pre><code>smithers scores &lt;run&gt; --node report
+smithers inspect &lt;run&gt; --pool</code></pre>
+<pre class="say"><code>"The run grades itself, and the grade is a row you can query later.
+ inspect --pool tallies attempts by model, so cheap-versus-strong is a
+ measurement rather than an opinion — and that one works with Docker down."</code></pre>
+
+    <div class="callout good"><b>The comparison, if the question deserves it:</b> the same workflow takes <code>--input '{"fixSeat":"cheap"}'</code> and swaps the whole fan-out onto the cheap seat. Two runs, one dashboard, token panels split by <code>model</code>. Do this before the talk, never during it.</div>
+  </section>
+
+  <hr />
+
+  <section id="fail">
+    <p class="eyebrow warn">Failure playbook</p>
+    <h2>What breaks, and the next command</h2>
+
+    <table>
+      <tr><th>symptom</th><th>cause</th><th>do this</th></tr>
+      <tr><td><code>smithers ps</code> shows nothing</td><td>Wrong directory. Each repo has its own store.</td><td>Switch tabs. Never <code>cd</code> mid-demo.</td></tr>
+      <tr><td>The gate will not clear</td><td>Several gates pending, so <code>--node</code> is required.</td><td><code>smithers why &lt;run&gt;</code> names the node. Pass it to <code>--node</code>.</td></tr>
+      <tr><td>Deny seems to kill the run</td><td>You denied a different gate, or resumed from the wrong file path.</td><td><code>smithers timeline &lt;run&gt;</code>, then resume with the exact workflow path and <code>--run-id</code>.</td></tr>
+      <tr><td>Run parked after a signal</td><td>Signal name and correlation id must <em>both</em> match.</td><td>Re-send with <code>--correlation spec-then-build-edit</code>, then resume.</td></tr>
+      <tr><td>UI is blank</td><td>Gateway not up, or no run for that workflow.</td><td>Re-run <code>smithers ui &lt;run-id&gt;</code>; it starts a Gateway itself. Fall back to <code>smithers monitor &lt;run-id&gt;</code>.</td></tr>
+      <tr><td>Grafana empty</td><td>Run launched without the OTLP endpoint set.</td><td>Show the screenshot. Pivot to <code>smithers inspect --pool</code> and <code>scores</code>.</td></tr>
+      <tr><td>Agent errors mid-demo</td><td>Rate limit or credential.</td><td>Do not debug on stage. <code>smithers timeline</code> on a finished run tells the same story.</td></tr>
+      <tr><td>Network dies entirely</td><td>—</td><td><code>graph</code>, <code>ps</code>, <code>why</code>, <code>timeline</code>, <code>inspect</code>, <code>scores</code> all read local state. Run the talk from those.</td></tr>
+    </table>
+
+    <div class="callout bad"><b>The rule:</b> never debug live. Every demo has an offline twin that reads persisted state. If a run misbehaves, switch to reading a finished run and keep talking — that pivot <em>is</em> the durability argument.</div>
+  </section>
+
+  <hr />
+
+  <section id="reset">
+    <p class="eyebrow">Reset</p>
+    <h2>Back to a clean fixture, for the next run-through</h2>
+    <p>Demo 1 and demo 2 both write to their repo. Rehearse, then reset, or the second rehearsal starts from changed source.</p>
+<pre><code># pricing-api: apply wrote src/pricing.ts, prices.json, migrations/002_*.sql
+# todo-cli:    implement rewrote src/store.ts and src/cli.ts
+git checkout -- examples/pricing-api examples/todo-cli
+
+cd examples/flaky-monorepo && smithers observability --down
+bun test packages        # still 11 or 12 failures; the fixture is unchanged</code></pre>
+    <div class="callout good"><b>Both repos are tracked in git,</b> so one <code>git checkout</code> restores the fixture. Commit before you rehearse, and the reset is a single command between run-throughs.</div>
+  </section>
+
+  <footer>presenter runbook · sibling to smithers-deck-2026-08.html and examples-brainstorm.html · per-repo detail in each <code>examples/&lt;repo&gt;/DEMO.md</code></footer>
+</div>
