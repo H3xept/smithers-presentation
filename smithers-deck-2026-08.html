@@ -1307,21 +1307,6 @@ run-1786513356304
     </div>
   </section>
 
-  <!-- 17 · TOKEN FURNACE -->
-  <section class="slide" id="s17">
-    <div class="slide-inner">
-      <p class="eyebrow">Part 5 · the cost of always-on</p>
-      <div class="furnace">
-        <div class="bignum">24/7<small>graphs × repos × triggers</small></div>
-        <div>
-          <h2 class="headline" style="margin-bottom:1rem">Always-on workflows have an always-on token bill.</h2>
-          <p class="lead">Nightly research. PR babysitting. Issue triage. Drift detection. Perf work. The moment durability makes always-on <em>possible</em>, you discover an enormous volume of in-flight tokens — every one of them billed on a frontier API.</p>
-          <p class="callout">At this scale, the binding constraint is API cost.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- 18 · DECOMPOSITION -->
   <section class="slide" id="s18">
     <div class="slide-inner">
@@ -1344,28 +1329,6 @@ run-1786513356304
           <p class="note">// their term, not mine — the Smithers docs call this <b>sandwich delegation</b>: “smart, expensive agents plan and review at the two ends, cheaper agents implement in the middle.”</p>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- 19 · RENT TOKENS VS BOX -->
-  <section class="slide" id="s19">
-    <div class="slide-inner">
-      <p class="eyebrow">Part 5 · fixed cost vs metered cost</p>
-      <h2 class="headline">From renting <span class="accent">tokens</span> to renting <span class="accent">hardware</span>.</h2>
-      <p class="lead wide">Decomposition put the bounded work within reach of a model small enough to run yourself. Kimi's open-weight MoE flagship is documented, in Smithers' own model notes, as “the strongest model you can self-host.” So the question opens up: <strong>what if you hosted it?</strong></p>
-      <div class="cols two" style="margin-top:1.3rem">
-        <div class="card">
-          <span class="k">today · rent tokens</span>
-          <h3>Frontier API</h3>
-          <p>Pay per token. The meter runs only when you do — zero ops, scales with use — but every always-on graph bills forever.</p>
-        </div>
-        <div class="card" style="border-color:var(--ember)">
-          <span class="k" style="color:var(--ember)">the move · rent the box</span>
-          <h3 style="color:var(--ember)">Your own rig</h3>
-          <p>Pay by the hour for GPUs. Fixed whether idle or flat out — so the whole game becomes keeping them busy.</p>
-        </div>
-      </div>
-      <p class="callout" style="margin-top:1.3rem">That flips cost from variable to fixed — which makes utilization, not price per token, the number that decides it.</p>
     </div>
   </section>
 
@@ -1416,6 +1379,21 @@ run-1786513356304
         </div>
       </div>
       <p class="note" style="margin-top:.8rem">// RunPod-class rates, mid-2026 · my own numbers, not a vendor's, and point-in-time. one measured caveat: aggressive pruning is near-lossless on benchmarks but doubles non-termination on long agentic runs, so termination rate matters as much as pass-rate.</p>
+    </div>
+  </section>
+
+  <!-- 17 · TOKEN FURNACE -->
+  <section class="slide" id="s17">
+    <div class="slide-inner">
+      <p class="eyebrow">Part 5 · the cost of always-on</p>
+      <div class="furnace">
+        <div class="bignum">24/7<small>graphs × repos × triggers</small></div>
+        <div>
+          <h2 class="headline" style="margin-bottom:1rem">Always-on workflows have an always-on token bill.</h2>
+          <p class="lead">Nightly research. PR babysitting. Issue triage. Drift detection. Perf work. The moment durability makes always-on <em>possible</em>, you discover an enormous volume of in-flight tokens — every one of them billed on a frontier API.</p>
+          <p class="callout">At this scale, the binding constraint is API cost.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1472,7 +1450,7 @@ run-1786513356304
         <div class="rb"><div class="clock">03:30</div><div class="what"><b>Live 1 · slide 09 · oneshot.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
         <div class="rb"><div class="clock">05:00</div><div class="what"><b>Live 2 · slide 11 · the graph.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> renders the whole graph in a second without calling a model — the most convincing second in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
         <div class="rb"><div class="clock">06:30</div><div class="what"><b>Live 3 · slide 15 · the gate.</b> The parked <code>pricing-api</code> run. <code>smithers why &lt;run&gt;</code> names the blocker, then <code>smithers deny … --note "…"</code> and watch the revise node wake. This is the best argument in the talk.</div></div>
-        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 17 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 27 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
+        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 17 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 26 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
         <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
       </div>
       </div>
@@ -1579,6 +1557,49 @@ run-1786513356304
     </div>
   </section>
 
+  <!-- 28 · GETTING STARTED ON A FRESH REPO (final slide) -->
+  <section class="slide" id="s31">
+    <div class="slide-inner">
+      <p class="eyebrow">Finally · your own repo · <code style="font-family:var(--mono);color:var(--cyan)">smithers init</code></p>
+      <h2 class="headline">One command to adopt it: <span class="accent">init</span>.</h2>
+      <div class="cols two">
+        <div class="code term" data-file="terminal">
+<pre><span class="com"># 0. no global install. bunx, every time.</span>
+<span class="ps">$</span> cd ~/code/your-repo
+
+<span class="com"># 1. the only command you type by hand.</span>
+<span class="com">#    scaffolds .smithers/, installs its deps,</span>
+<span class="com">#    registers an account, installs the skill.</span>
+<span class="ps">$</span> bunx smithers-orchestrator init --add-agents
+
+<span class="com"># 2. confirm the agent it will drive.</span>
+<span class="ps">$</span> smithers agents list
+<span class="ps">$</span> smithers agents test <span class="str">&lt;label&gt;</span>
+
+<span class="com"># 3. first real work — no authoring at all.</span>
+<span class="ps">$</span> smithers oneshot <span class="str">"&lt;a goal you'd give a teammate&gt;"</span>
+
+<span class="com"># 4. when it recurs, make it a graph.</span>
+<span class="ps">$</span> smithers make-workflow <span class="str">"&lt;describe the flow&gt;"</span>
+<span class="ps">$</span> smithers graph .smithers/workflows/&lt;name&gt;.tsx
+<span class="ps">$</span> smithers up &lt;name&gt; -d &amp;&amp; smithers monitor</pre>
+        </div>
+        <div>
+          <p class="lead"><code style="font-family:var(--mono);color:var(--cyan)">init</code> is interactive and does four things: it writes the pack into <code style="font-family:var(--mono)">.smithers/</code>, installs its dependencies, installs the curated <strong>smithers skill</strong> into every coding agent it detects, and appends usage guidance to an existing <code style="font-family:var(--mono)">CLAUDE.md</code> / <code style="font-family:var(--mono)">AGENTS.md</code>. After that your agent operates the CLI, not you.</p>
+          <ul class="list tight" style="margin-top:1.1rem">
+            <li><code style="font-family:var(--mono);color:var(--cyan)">--yes</code> <span>— non-interactive; safe for CI and for an agent running init on your behalf</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">--tutorial</code> <span>— on by default: hands you a hijacked session with your own agent to walk the pack</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">--global</code> <span>— scaffold <code style="font-family:var(--mono)">~/.smithers</code> instead; those workflows run from any repo, and a repo-local pack wins</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">--agents-only</code> <span>— write only <code style="font-family:var(--mono)">.smithers/agents/</code>; files already there are left alone</span></li>
+          </ul>
+          <p class="callout" style="margin-top:1.2rem">Don't know what to run first? <code style="font-family:var(--mono)">smithers starters</code> prints plain-English outcomes with the exact command for each — <code style="font-family:var(--mono)">init --template &lt;id&gt;</code> wires one up.</p>
+        </div>
+      </div>
+      <p class="note" style="margin-top:1.1rem">// fix the <code style="color:var(--cyan)">.gitignore</code> line before your first commit — the default ignores <code>.smithers/</code> wholesale. Keep <code>workflows/ prompts/ agents.ts smithers.config.ts</code>; ignore <code>executions/ runs/ state/ *.db</code>.</p>
+      <p class="note">// stuck after that: <code style="color:var(--cyan)">smithers ask "&lt;question&gt;"</code> answers it with your own agent, and <code style="color:var(--cyan)">smithers why &lt;run&gt;</code> names the blocker on a parked run.</p>
+    </div>
+  </section>
+
 </div>
 
 <div class="frame">
@@ -1589,7 +1610,7 @@ run-1786513356304
     </svg>
     <span>Smithers · Aug 2026</span>
   </div>
-  <div class="counter"><span id="actlabel" style="color:var(--ink-faint);margin-right:1.1rem"></span><b id="cur">01</b> / <span id="total">28</span></div>
+  <div class="counter"><span id="actlabel" style="color:var(--ink-faint);margin-right:1.1rem"></span><b id="cur">01</b> / <span id="total">30</span></div>
 </div>
 
 <div class="progress" id="bar"></div>
@@ -1665,6 +1686,7 @@ run-1786513356304
       s20: 'part 5 · cost', s21: 'part 5 · cost',
       s22: 'summary',
       s23: 'appendix', s24: 'appendix', s15: 'appendix', s27: 'appendix',
+      s31: 'get started',
     };
 
     function show(n) {
