@@ -757,20 +757,33 @@
     </div>
   </section>
 
-  <!-- 2 · THE PROBLEM -->
-  <section class="slide" id="s2">
+  <!-- 2b · WHEN TO USE A GRAPH AT ALL -->
+  <section class="slide" id="s29">
     <div class="slide-inner">
-      <p class="eyebrow">Part 1 · the problem</p>
-      <h2 class="headline">You already run agents unattended.<br />The <span class="accent">work</span> doesn't survive a restart.</h2>
-      <p class="lead wide" style="margin-bottom:1.6rem">Everyone in this room has a <code style="font-family:var(--mono);color:var(--cyan)">while true</code> around a coding agent, or a script that fires one on a webhook. It works right up until it doesn't:</p>
-      <div class="cols four">
-        <div class="card"><span class="k">03:12</span><h3>Laptop sleeps</h3><p>Six hours of reasoning gone. The next run starts from an empty context and the half-finished branch.</p></div>
-        <div class="card"><span class="k">no answer</span><h3>It needed you</h3><p>It hit an ambiguous call at 2am. Best case it stalled; worst case it guessed and committed.</p></div>
-        <div class="card"><span class="k">$$$</span><h3>One model, every step</h3><p>The frontier model formatted your JSON and renamed your variables at frontier prices.</p></div>
-        <div class="card"><span class="k">?</span><h3>No idea why</h3><p>It failed somewhere around turn 40, and there is no record of the state at that point.</p></div>
+      <p class="eyebrow">Part 1 · scope · when a graph is the right tool</p>
+      <h2 class="headline">Graphs are for <span class="accent">recurring</span> work.<br />You + your harness stay the default.</h2>
+      <div class="versus">
+        <div class="left">
+          <div class="vhead">stay in the chat — human + harness</div>
+          <ul>
+            <li><strong>one-off and exploratory</strong> — debugging, “why is this failing”, design conversations. The shape of the work emerges turn by turn; you are the control flow</li>
+            <li>needs your judgment <em>mid-flight</em>, not at a few named gates — every step is a decision point</li>
+            <li>fits one context window and finishes while you're watching, so durability buys you nothing</li>
+            <li>a clear one-shot goal without babysitting? <code style="font-family:var(--mono)">smithers oneshot</code> — still no graph to author</li>
+          </ul>
+        </div>
+        <div class="right">
+          <div class="vhead">write a graph — durable workflow</div>
+          <ul>
+            <li><strong>the procedure recurs</strong> — anything you'd put in a skill, a runbook, or a “how we always do releases” doc. Recurrence is the strongest signal</li>
+            <li>the structure is known <em>up front</em>: stages, fan-out, loop-until-green, a review gate — and human input reduces to a few named decision points</li>
+            <li>it runs unattended or overnight, so crashes must resume and waiting must be free</li>
+            <li>you want to <strong>improve it over time</strong>: version it, eval it, put a number on a prompt change instead of an opinion</li>
+          </ul>
+        </div>
       </div>
-      <p class="callout">None of these are agent failures. They are missing infrastructure around the agent.</p>
-      <p class="note" style="margin-top:1.1rem">// scope check, so the rest of this talk is honest: Smithers is a process <b>you</b> run, not a hosted service. Close the lid and the run still stops — <code style="color:var(--cyan)">smithers supervise</code> auto-resumes runs whose owner process died, but running genuinely overnight still needs a machine that stays awake.</p>
+      <p class="callout" style="margin-top:1.2rem">The project's own rule: <strong>use the lightest route that preserves the needed durability.</strong> A recurring procedure as prose is instructions every agent re-interprets from scratch; as a graph it is one executable source of truth you run, resume, inspect and optimise. One-offs never earn that investment — recurring work always does.</p>
+      <p class="note">// the three routes in — direct, oneshot, workflow — come with concrete setup costs in part 3.</p>
     </div>
   </section>
 
@@ -779,11 +792,20 @@
     <div class="slide-inner">
       <p class="eyebrow smith">Part 2 · what it is — the project's own description</p>
       <h2 class="headline">“Durable AI workflow orchestration<br />as a <span class="accent-smith">JSX runtime</span>.”</h2>
-      <p class="lead wide">A workflow is a TypeScript JSX tree in your repo. It runs for minutes or days, and the runtime records every finished step as a typed, persisted row — the design decision from the overview, implemented. The next three slides show what that looks like in practice.</p>
-      <div class="chips" style="margin-top:1.6rem">
-        <span class="on">npm · smithers-orchestrator</span><span>smithers.sh</span><span>41 components</span><span>19 agent adapters</span><span>0.31.0 in our monorepo</span>
+      <p class="lead wide">A workflow is a TypeScript JSX tree in your repo. The runtime records every finished step as a typed, persisted row.</p>
+      <div class="code" data-file=".smithers/workflows/triage-and-fix.tsx">
+<pre><span class="kw">export default</span> <span class="fn">smithers</span>((ctx) <span class="pn">=&gt;</span> (
+  <span class="pn">&lt;</span><span class="tag">Workflow</span> <span class="at">name</span>=<span class="str">"triage-and-fix"</span><span class="pn">&gt;</span>
+    <span class="pn">&lt;</span><span class="tag">Worktree</span> <span class="at">path</span>=<span class="str">".wt/fix"</span> <span class="at">branch</span>=<span class="str">"fix/flaky-e2e"</span><span class="pn">&gt;</span>
+      <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"fix"</span> <span class="at">output</span>=<span class="pn">{</span>outputs.patch<span class="pn">}</span>
+           <span class="at">agent</span>=<span class="pn">{</span>implementer<span class="pn">}</span> <span class="pn">/&gt;</span>
+      <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"gate"</span> <span class="at">output</span>=<span class="pn">{</span>outputs.gate<span class="pn">}</span>
+           <span class="at">agent</span>=<span class="pn">{</span>e2eRunner<span class="pn">}</span> <span class="at">scorers</span>=<span class="pn">{</span>scorers<span class="pn">}</span> <span class="pn">/&gt;</span>
+    <span class="pn">&lt;/</span><span class="tag">Worktree</span><span class="pn">&gt;</span>
+  <span class="pn">&lt;/</span><span class="tag">Workflow</span><span class="pn">&gt;</span>
+))</pre>
       </div>
-      <p class="note">// don't install it globally — <code style="color:var(--cyan)">bunx smithers-orchestrator &lt;cmd&gt;</code>. on npm, plain <code>smithers</code> is somebody else's package.</p>
+      <p class="note" style="margin-top:1.1rem">// don't install it globally — <code style="color:var(--cyan)">bunx smithers-orchestrator &lt;cmd&gt;</code>. on npm, plain <code>smithers</code> is somebody else's package.</p>
     </div>
   </section>
 
@@ -839,6 +861,38 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- 5b · THE DATA MODEL LIVES IN THE REPO -->
+  <section class="slide" id="s30">
+    <div class="slide-inner">
+      <p class="eyebrow smith">Part 2 · the data model · where the rows live</p>
+      <h2 class="headline">Everything is <span class="accent-smith">in the repo</span>.<br />There is no upstream service.</h2>
+      <div class="cols two">
+        <div class="code" data-file=".smithers/ — a real Bun package, scaffolded by init">
+<pre>.smithers/
+├── agents.ts        <span class="com"># WHO — pools → provider bindings</span>
+├── workflows/       <span class="com"># WHAT — one executable .tsx per graph</span>
+├── prompts/         <span class="com"># .mdx prompt components</span>
+├── components/      <span class="com"># reusable subgraphs + Zod schemas</span>
+├── ui/              <span class="com"># per-workflow browser UIs</span>
+│
+│  <span class="com"># ── runtime state · gitignored ──</span>
+├── runs/ executions/ <span class="com"># event logs, persisted frames</span>
+└── state/ *.db  pg/  <span class="com"># the DB itself — SQLite / PGlite</span></pre>
+        </div>
+        <div>
+          <ul class="list tight smith">
+            <li>the DB is a <strong>local file</strong> <span>— SQLite or embedded PGlite inside <code style="font-family:var(--mono)">.smithers/</code>; real Postgres is an opt-in for teams, not a requirement</span></li>
+            <li>workflows are <strong>source files</strong> <span>— versioned, diffed and code-reviewed like everything else; <code style="font-family:var(--mono)">git clone</code> hands a coworker the same graphs</span></li>
+            <li>no hosted control plane <span>— no signup, no API endpoint to depend on, nothing to be down. The CLI and the runs DB are the whole product</span></li>
+            <li>every surface reads the same rows <span>— CLI, monitor, custom UIs and the Gateway are processes <em>you</em> run over that one local store</span></li>
+          </ul>
+          <p class="callout smith" style="margin-top:1.2rem">The split to remember: <strong>what you author is committed, what the runtime produces is gitignored.</strong> Agents, workflows, prompts and components travel with the repo; frames and outputs stay local — and both halves survive any vendor, because neither ever leaves your machine.</p>
+        </div>
+      </div>
+      <p class="note" style="margin-top:1.1rem">// agent bindings are the one machine-local seam: <code style="color:var(--cyan)">agents.ts</code> is generated from <code style="color:var(--cyan)">~/.smithers/accounts.json</code>, so credentials never enter the repo.</p>
     </div>
   </section>
 
@@ -1403,21 +1457,6 @@ run-1786513356304
     </div>
   </section>
 
-  <!-- 22 · CLOSING -->
-  <section class="slide" id="s22">
-    <div class="slide-inner">
-      <p class="eyebrow">Summary</p>
-      <h2 class="headline">Three things to remember.</h2>
-      <div class="stick">
-        <div class="item"><div class="t">State outlives the process.<span>Restarts resume; the stored frames double as the debugger.</span></div></div>
-        <div class="item"><div class="t">A run can wait for a person at no cost.<span>Gates and questions are nodes; the decision is a row written later.</span></div></div>
-        <div class="item"><div class="t">Each node picks its own model and sandbox.<span>Roles bind to engines in one file — including self-hosted endpoints.</span></div></div>
-      </div>
-      <p class="callout" style="margin-top:1.6rem">The smallest entry point is <code style="font-family:var(--mono)">smithers oneshot "&lt;goal&gt;"</code> — no setup, one resumable run. Everything else in this deck is reachable from there.</p>
-      <p class="note" style="margin-top:.9rem">// smithers.sh · github.com/smithersai/smithers · <code style="color:var(--cyan)">smithers ask "..."</code> · questions?</p>
-    </div>
-  </section>
-
   <!-- 23 · APPENDIX: RUNBOOK -->
   <section class="slide" id="s23">
     <div class="slide-inner">
@@ -1430,10 +1469,10 @@ run-1786513356304
       <div class="runbook">
         <div class="rb"><div class="clock">-10m</div><div class="what"><b>Before you start.</b> <code>smithers oneshot --status</code> must print usable agents. <code>smithers ps</code> must be reachable. The three example repos each need their run pre-warmed — full command order in <code>demo-runbook.html</code> and each repo's <code>DEMO.md</code>.</div></div>
         <div class="rb"><div class="clock">-2m</div><div class="what"><b>Pre-warm everything.</b> Launch the oneshot, park <code>examples/pricing-api</code> at its gate and <code>examples/todo-cli</code> at its spec editor. Fresh runs are ten minutes of watching a spinner.</div></div>
-        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Live 1 · slide 08 · oneshot.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
-        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Live 2 · slide 10 · the graph.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> renders the whole graph in a second without calling a model — the most convincing second in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
-        <div class="rb"><div class="clock">06:30</div><div class="what"><b>Live 3 · slide 14 · the gate.</b> The parked <code>pricing-api</code> run. <code>smithers why &lt;run&gt;</code> names the blocker, then <code>smithers deny … --note "…"</code> and watch the revise node wake. This is the best argument in the talk.</div></div>
-        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 16 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 27 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
+        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Live 1 · slide 09 · oneshot.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
+        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Live 2 · slide 11 · the graph.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> renders the whole graph in a second without calling a model — the most convincing second in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
+        <div class="rb"><div class="clock">06:30</div><div class="what"><b>Live 3 · slide 15 · the gate.</b> The parked <code>pricing-api</code> run. <code>smithers why &lt;run&gt;</code> names the blocker, then <code>smithers deny … --note "…"</code> and watch the revise node wake. This is the best argument in the talk.</div></div>
+        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 17 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 27 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
         <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
       </div>
       </div>
