@@ -1,0 +1,516 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Human decisions in Smithers workflow UIs — approval gates, the Gateway, and the two triage.tsx files</title>
+<meta name="description" content="How <Approval> relates to custom workflow UIs, the exact hooks and payloads for letting a human decide in the browser, and how .smithers/workflows/triage.tsx connects to .smithers/ui/triage.tsx." />
+
+<style>
+  :root {
+    --ground:   #0B0E14;
+    --ground-2: #121826;
+    --ground-3: #19212F;
+    --line:     #232C3D;
+    --ink:      #E9ECF3;
+    --ink-dim:  #98A2B6;
+    --ink-faint:#5B6679;
+    --ember:    #FF8A4C;
+    --ember-2:  #FFB37E;
+    --ember-deep:#C45A22;
+    --cyan:     #62CBDA;
+    --smith:    #5B93FF;
+    --smith-2:  #9CBBFF;
+    --good:     #6FD08C;
+    --warn:     #E9C46A;
+    --bad:      #E06B6B;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 940px; margin: 0 auto; padding: 4rem 1.6rem 8rem; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin: 0 0 1.1rem;
+    display: flex; align-items: center; gap: .8rem;
+  }
+  .eyebrow::before { content: ""; width: 1.6rem; height: 1px; background: var(--ember); }
+
+  h1 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(1.7rem, 4vw, 2.5rem);
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+  }
+  h1 .a { color: var(--smith); }
+  h2 {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+    letter-spacing: -.01em;
+    margin: 4rem 0 1.1rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--line);
+    scroll-margin-top: 1.5rem;
+  }
+  h2 .n { color: var(--ember); margin-right: .6rem; }
+  h3 {
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 2.2rem 0 .7rem;
+    color: var(--smith-2);
+  }
+  p { margin: 0 0 1rem; color: var(--ink-dim); text-wrap: pretty; }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  .lede { font-size: 1.1rem; color: var(--ink-dim); max-width: 68ch; }
+
+  code {
+    font-family: var(--mono);
+    font-size: .875em;
+    color: var(--cyan);
+    background: var(--ground-3);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: .08em .32em;
+  }
+  h2 code, h3 code { font-size: .92em; background: none; border: none; padding: 0; }
+
+  pre {
+    background: var(--ground-3);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1.05rem 1.2rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: .8rem;
+    line-height: 1.6;
+    margin: 0 0 1.2rem;
+    tab-size: 2;
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: 1em; }
+  .file {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .1em;
+    color: var(--ink-faint);
+    margin: 1.4rem 0 .45rem;
+    display: flex; align-items: center; gap: .55rem;
+  }
+  .file::before { content: "▸"; color: var(--smith); }
+  .file.term::before { content: "$"; color: var(--ember); }
+  .kw  { color: var(--ember); }
+  .fn  { color: var(--cyan); }
+  .str { color: var(--good); }
+  .com { color: var(--ink-faint); font-style: italic; }
+  .pn  { color: var(--ink-dim); }
+  .tag { color: var(--smith); }
+  .at  { color: var(--warn); }
+  .hl  { color: var(--ember-2); }
+  .ps  { color: var(--ember); }
+
+  ul, ol { margin: 0 0 1.2rem; padding-left: 0; list-style: none; }
+  ul li, ol li { position: relative; padding-left: 1.6rem; margin-bottom: .6rem; color: var(--ink-dim); }
+  ul li::before { content: "▸"; position: absolute; left: 0; color: var(--smith); font-family: var(--mono); }
+  ol { counter-reset: n; }
+  ol li::before {
+    counter-increment: n; content: counter(n);
+    position: absolute; left: 0; color: var(--ember);
+    font-family: var(--mono); font-size: .85rem;
+  }
+
+  .callout {
+    border-left: 2px solid var(--ember);
+    padding: .1rem 0 .1rem 1.1rem;
+    margin: 1.5rem 0;
+    font-family: var(--mono);
+    font-size: .92rem;
+    line-height: 1.5;
+    color: var(--ember-2);
+  }
+  .callout.smith { border-color: var(--smith); color: var(--smith-2); }
+  .callout.warn  { border-color: var(--warn);  color: var(--warn); }
+
+  .box {
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1.1rem 1.3rem;
+    margin: 1.4rem 0;
+  }
+  .box.gotcha { border-color: var(--warn); background: linear-gradient(180deg, rgba(233,196,106,.07), rgba(233,196,106,.01)); }
+  .box.gotcha .t { color: var(--warn); }
+  .box.smith  { border-color: var(--smith); background: linear-gradient(180deg, rgba(91,147,255,.08), rgba(91,147,255,.01)); }
+  .box.smith .t { color: var(--smith); }
+  .box .t {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: .6rem;
+  }
+  .box p:last-child { margin-bottom: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 1.3rem 0; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: .68rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 1rem .7rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: .65rem 1rem .65rem 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-dim); }
+  tr td:first-child { color: var(--ink); white-space: nowrap; }
+
+  .flow { margin: 1.6rem 0; }
+  .flowsvg { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 5px; background: var(--ground-2); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; }
+  @media (max-width: 800px) { .two { grid-template-columns: 1fr; } }
+
+  .toc {
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1.1rem 1.3rem;
+    margin: 2rem 0 0;
+  }
+  .toc ol { margin: 0; }
+  .toc li { margin-bottom: .4rem; }
+  .toc a { color: var(--ink-dim); text-decoration: none; border-bottom: 1px solid transparent; }
+  .toc a:hover { color: var(--smith); border-bottom-color: var(--smith); }
+
+  footer {
+    margin-top: 5rem; padding-top: 1.4rem; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: .74rem; color: var(--ink-faint); line-height: 1.7;
+  }
+  footer a { color: var(--cyan); text-decoration: none; }
+  .chip {
+    display: inline-block;
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .08em;
+    color: var(--good); border: 1px solid var(--good); border-radius: 999px;
+    padding: .1rem .55rem; margin-left: .4rem; vertical-align: 1px;
+  }
+  .chip.gap { color: var(--warn); border-color: var(--warn); }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Smithers · human-in-the-loop · august 2026</p>
+  <h1>Human decisions in <span class="a">workflow UIs</span></h1>
+  <p class="lede">An approval gate renders nothing. It persists a row and parks the run. A custom workflow UI is one of three clients that can clear that row — and the only link between your graph and your UI is a pair of matching id strings.</p>
+
+  <div class="toc">
+    <ol>
+      <li><a href="#s1">What the gate actually is, and why the UI is optional</a></li>
+      <li><a href="#s2">Making a human decide, three levels of effort</a></li>
+      <li><a href="#s3">The exact payloads — and the two gotchas</a></li>
+      <li><a href="#s4">Yes/no vs. structured input: pick the right node</a></li>
+      <li><a href="#s5">The two <code>triage.tsx</code> files</a></li>
+      <li><a href="#s6">Who is allowed to decide</a></li>
+    </ol>
+  </div>
+
+  <h2 id="s1"><span class="n">01</span>What the gate actually is</h2>
+
+  <p><code>&lt;Approval&gt;</code> has no visual component. It is a scheduler task that, when the graph reaches it, writes a <strong>pending decision row</strong> keyed on <code>(runId, nodeId, iteration)</code> and stops handing out work in that lane. The process may then exit; the row survives.</p>
+
+  <p>That row is readable and writable over exactly one pair of Gateway RPC methods. Everything that clears a gate — the CLI, your UI, an automated keeper — is a client of those two:</p>
+
+  <table>
+    <thead><tr><th>Direction</th><th>RPC method</th><th>REST twin</th><th>Scope</th></tr></thead>
+    <tbody>
+      <tr><td>read pending</td><td><code>listApprovals</code></td><td><code>GET</code> domain read</td><td><code>run:read</code></td></tr>
+      <tr><td>write decision</td><td><code>submitApproval</code></td><td><code>POST /v1/api/approvals/:id</code></td><td><code>approval:submit</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="flow">
+    <svg class="flowsvg" viewBox="0 0 900 250" role="img" aria-label="Data flow: the Approval node persists a pending row; the Gateway exposes it through listApprovals and submitApproval; the CLI, the custom UI and the monitor are three interchangeable clients; the decision row unblocks dependents on the next frame.">
+      <text x="24" y="26" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1.6">THE GRAPH</text>
+      <rect x="24" y="38" width="200" height="52" rx="4" fill="#121826" stroke="#5B93FF" stroke-width="1.6"></rect>
+      <text x="124" y="60" text-anchor="middle" fill="#5B93FF" font-family="ui-monospace,monospace" font-size="12.5">&lt;Approval id="ship"&gt;</text>
+      <text x="124" y="78" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="10.5">parks the lane</text>
+
+      <path d="M124 90 L124 118" stroke="#5B93FF" stroke-width="1.5"></path>
+      <path d="M120 112 L124 120 L128 112" fill="#5B93FF"></path>
+
+      <rect x="24" y="120" width="200" height="46" rx="4" fill="#19212F" stroke="#6FD08C" stroke-width="1.6"></rect>
+      <text x="124" y="139" text-anchor="middle" fill="#6FD08C" font-family="ui-monospace,monospace" font-size="11.5">pending row</text>
+      <text x="124" y="156" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="10">(runId, nodeId, iteration)</text>
+
+      <path d="M224 143 L296 143" stroke="#39435A" stroke-width="1.5"></path>
+      <path d="M290 139 L298 143 L290 147" fill="#39435A"></path>
+
+      <text x="316" y="26" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1.6">THE GATEWAY</text>
+      <rect x="296" y="38" width="196" height="176" rx="4" fill="#121826" stroke="#232C3D" stroke-width="1.6"></rect>
+      <rect x="314" y="106" width="160" height="34" rx="3" fill="rgba(98,203,218,0.10)" stroke="#62CBDA" stroke-width="1.4"></rect>
+      <text x="394" y="128" text-anchor="middle" fill="#62CBDA" font-family="ui-monospace,monospace" font-size="11.5">listApprovals</text>
+      <rect x="314" y="150" width="160" height="34" rx="3" fill="rgba(255,138,76,0.10)" stroke="#FF8A4C" stroke-width="1.4"></rect>
+      <text x="394" y="172" text-anchor="middle" fill="#FF8A4C" font-family="ui-monospace,monospace" font-size="11.5">submitApproval</text>
+      <text x="394" y="70" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="10.5">/v1/rpc/&lt;method&gt;</text>
+      <text x="394" y="87" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="10">scope: approval:submit</text>
+
+      <path d="M492 126 L566 96" stroke="#39435A" stroke-width="1.5"></path>
+      <path d="M492 143 L566 143" stroke="#39435A" stroke-width="1.5"></path>
+      <path d="M492 160 L566 190" stroke="#39435A" stroke-width="1.5"></path>
+
+      <text x="586" y="26" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11" letter-spacing="1.6">INTERCHANGEABLE CLIENTS</text>
+      <rect x="566" y="72" width="310" height="46" rx="4" fill="#121826" stroke="#232C3D" stroke-width="1.4"></rect>
+      <text x="582" y="92" fill="#E9ECF3" font-family="ui-monospace,monospace" font-size="11.5">CLI</text>
+      <text x="582" y="108" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="10.5">smithers approve &lt;run&gt; --node ship --by leo</text>
+
+      <rect x="566" y="126" width="310" height="46" rx="4" fill="#121826" stroke="#5B93FF" stroke-width="1.8"></rect>
+      <text x="582" y="146" fill="#5B93FF" font-family="ui-monospace,monospace" font-size="11.5">your workflow UI</text>
+      <text x="582" y="162" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="10.5">/workflows/triage · useGatewayActions()</text>
+
+      <rect x="566" y="180" width="310" height="46" rx="4" fill="#121826" stroke="#232C3D" stroke-width="1.4"></rect>
+      <text x="582" y="200" fill="#E9ECF3" font-family="ui-monospace,monospace" font-size="11.5">monitor</text>
+      <text x="582" y="216" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="10.5">inline approval banner in Tree mode</text>
+
+      <path d="M124 166 L124 214 L64 214" stroke="#6FD08C" stroke-width="1.5" stroke-dasharray="4 4" fill="none"></path>
+      <path d="M70 210 L62 214 L70 218" fill="#6FD08C"></path>
+      <text x="66" y="234" fill="#6FD08C" font-family="ui-monospace,monospace" font-size="10.5">next frame reads the decision row → dependents unblock</text>
+    </svg>
+  </div>
+
+  <p class="callout smith">The UI is not a feature of the gate. It is the third client of a durable row, and it is the only one a non-engineer will ever use.</p>
+
+  <h2 id="s2"><span class="n">02</span>Making a human decide, three levels</h2>
+
+  <h3>Level 1 — nothing to write</h3>
+  <p><code>SimpleWorkflowDashboard</code> is a complete one-workflow dashboard: prompt box and Start button, run list, node tree, structured event log, a live per-node chat pane, and a monitor link. Approvals are already in it.</p>
+
+  <p class="file">.smithers/ui/triage.tsx</p>
+<pre><code><span class="kw">import</span> { createGatewayReactRoot } <span class="kw">from</span> <span class="str">"smithers-orchestrator/gateway-react"</span>
+<span class="kw">import</span> { <span class="fn">SimpleWorkflowDashboard</span> } <span class="kw">from</span> <span class="str">"smithers-orchestrator/gateway-ui"</span>
+
+<span class="fn">createGatewayReactRoot</span>(<span class="pn">&lt;</span><span class="tag">SimpleWorkflowDashboard</span> <span class="at">workflow</span>=<span class="str">"triage"</span> <span class="pn">/&gt;</span>)</code></pre>
+
+  <h3>Level 2 — drop in an approval widget</h3>
+  <p>Three prebuilt queues, in rising richness. All of them resolve through <code>submitApproval</code> for you:</p>
+
+  <table>
+    <thead><tr><th>Component</th><th>Renders</th><th>Key props</th></tr></thead>
+    <tbody>
+      <tr><td><code>ApprovalPanel</code></td><td>The pending queue with Approve and Deny buttons.</td><td><code>filter · pollMs · onError</code></td></tr>
+      <tr><td><code>GatewayApprovalList</code></td><td>The same queue with the agentic <code>ApprovalCard</code> anatomy — risk, resources, reviewer note.</td><td><code>filter · note · empty · onResolved</code></td></tr>
+      <tr><td><code>GatewayApprovalConfirmation</code></td><td>One pending row as the <code>Confirmation</code> lifecycle anatomy.</td><td><code>approval · note · onResolved</code></td></tr>
+    </tbody>
+  </table>
+
+<pre><code><span class="pn">&lt;</span><span class="tag">ApprovalPanel</span> <span class="at">filter</span>=<span class="pn">{{</span> workflow: <span class="str">"triage"</span> <span class="pn">}}</span> <span class="pn">/&gt;</span>
+<span class="com">// or, with the richer card anatomy:</span>
+<span class="pn">&lt;</span><span class="tag">GatewayApprovalList</span> <span class="at">filter</span>=<span class="pn">{{</span> runId <span class="pn">}}</span> <span class="at">onResolved</span>=<span class="pn">{</span>refetch<span class="pn">}</span> <span class="pn">/&gt;</span></code></pre>
+
+  <h3>Level 3 — your own control, two hooks</h3>
+  <p>When the decision needs your product's own layout — a triage table where each row is a ticket — read with <code>useGatewayApprovals</code> and write with <code>useGatewayActions</code>.</p>
+
+  <p class="file">.smithers/ui/triage.tsx</p>
+<pre><code><span class="kw">import</span> {
+  createGatewayReactRoot, useGatewayApprovals, useGatewayActions, useGatewayNodeOutput,
+} <span class="kw">from</span> <span class="str">"smithers-orchestrator/gateway-react"</span>
+
+<span class="kw">function</span> <span class="fn">TriageGate</span>({ runId }: { runId: <span class="tag">string</span> }) {
+  <span class="com">// `data` IS the array of gates — there is no `data.approvals` wrapper.</span>
+  <span class="kw">const</span> gates = <span class="fn">useGatewayApprovals</span>({ filter: { runId } })
+  <span class="kw">const</span> { submitApproval } = <span class="fn">useGatewayActions</span>()
+
+  <span class="kw">return</span> (gates.data ?? []).<span class="fn">map</span>((g) =&gt; (
+    <span class="pn">&lt;</span><span class="tag">article</span> <span class="at">key</span>=<span class="pn">{</span>`${g.nodeId}:${g.iteration}`<span class="pn">}&gt;</span>
+      <span class="com">/* the title field is `requestTitle`, not `title` */</span>
+      <span class="pn">&lt;</span><span class="tag">h3</span><span class="pn">&gt;{</span>g.requestTitle ?? g.nodeId<span class="pn">}&lt;/</span><span class="tag">h3</span><span class="pn">&gt;</span>
+      <span class="pn">&lt;</span><span class="tag">p</span><span class="pn">&gt;{</span>g.requestSummary<span class="pn">}&lt;/</span><span class="tag">p</span><span class="pn">&gt;</span>
+
+      <span class="com">/* the real context lives in the UPSTREAM node's output — see §03 */</span>
+      <span class="pn">&lt;</span><span class="fn">TicketList</span> <span class="at">runId</span>=<span class="pn">{</span>runId<span class="pn">}</span> <span class="at">nodeId</span>=<span class="str">"classify"</span> <span class="pn">/&gt;</span>
+
+      <span class="pn">&lt;</span><span class="tag">button</span> <span class="at">onClick</span>=<span class="pn">{</span>() =&gt; <span class="hl">submitApproval</span>({
+        runId, nodeId: g.nodeId, iteration: g.iteration,
+        decision: { approved: <span class="kw">true</span> },
+      })<span class="pn">}&gt;</span>Approve<span class="pn">&lt;/</span><span class="tag">button</span><span class="pn">&gt;</span>
+
+      <span class="pn">&lt;</span><span class="tag">button</span> <span class="at">onClick</span>=<span class="pn">{</span>() =&gt; <span class="hl">submitApproval</span>({
+        runId, nodeId: g.nodeId, iteration: g.iteration,
+        decision: { approved: <span class="kw">false</span>, note: <span class="str">"not this sprint"</span> },
+      })<span class="pn">}&gt;</span>Deny<span class="pn">&lt;/</span><span class="tag">button</span><span class="pn">&gt;</span>
+    <span class="pn">&lt;/</span><span class="tag">article</span><span class="pn">&gt;</span>
+  ))
+}</code></pre>
+
+  <p><code>useGatewayApprovals</code> re-pulls when a run reaches waiting-approval and again after a <code>submitApproval</code>, so the queue empties itself. Over WebSocket, <code>submitApproval</code> also auto-subscribes the connection to the affected <code>runId</code>.</p>
+
+  <h2 id="s3"><span class="n">03</span>The exact payloads — and the two gotchas</h2>
+
+  <p>A pending gate summary is exactly this shape:</p>
+
+<pre><code><span class="kw">type</span> <span class="tag">GatewayApprovalSummary</span> = {
+  runId: <span class="tag">string</span>
+  nodeId: <span class="tag">string</span>
+  iteration: <span class="tag">number</span>
+  requestTitle?: <span class="tag">string</span>
+  requestSummary?: <span class="tag">string</span>
+  workflowKey?: <span class="tag">string</span>
+  requestedAtMs: <span class="tag">number</span>
+}</code></pre>
+
+  <div class="box gotcha">
+    <span class="t">Gotcha 1 · the gate carries no metadata</span>
+    <p><code>&lt;Approval request&gt;</code> accepts <code>{ title, summary, metadata }</code>, but the summary the Gateway hands your UI has <strong>no <code>metadata</code> field</strong> — only the title and summary strings. So a UI cannot render “here are the 14 tickets, tick the ones to fix” out of the gate itself.</p>
+    <p><strong>Design consequence:</strong> put the decision payload in the <em>upstream task's output</em> and read it with <code>useGatewayNodeOutput(runId, nodeId)</code> (RPC <code>getNodeOutput</code>). The gate then carries only the verdict. This is the right split anyway — the payload is typed by a Zod schema and persisted as a row, where the gate's free-form metadata would be neither.</p>
+  </div>
+
+  <div class="box gotcha">
+    <span class="t">Gotcha 2 · field names bite</span>
+    <p>The title is <code>requestTitle</code>, not <code>title</code>. The hook's <code>data</code> <em>is</em> the array, not <code>data.approvals</code>. And <code>decision</code> is required on <code>submitApproval</code> — the verdict lives inside that object, not as a sibling <code>approved</code> flag.</p>
+  </div>
+
+  <h2 id="s4"><span class="n">04</span>Yes/no vs. structured input</h2>
+
+  <p>This is the part that decides your graph's shape, so it is worth being precise about what is documented as browser-reachable. There are three human-facing nodes, and they do not have equal UI support:</p>
+
+  <table>
+    <thead><tr><th>Node</th><th>Human returns</th><th>Reachable from a browser UI?</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><code>&lt;Approval&gt;</code></td>
+        <td><code>{ approved, note, decidedBy, decidedAt }</code></td>
+        <td><strong>Yes</strong> — <code>listApprovals</code> + <code>submitApproval</code>, plus three prebuilt widgets. <span class="chip">first class</span></td>
+      </tr>
+      <tr>
+        <td><code>&lt;WaitForEvent&gt;</code> / <code>&lt;Signal&gt;</code></td>
+        <td>an arbitrary JSON <code>payload</code></td>
+        <td><strong>Yes</strong> — <code>submitSignal({ runId, correlationKey, payload })</code>. <span class="chip">first class</span></td>
+      </tr>
+      <tr>
+        <td><code>&lt;HumanTask&gt;</code></td>
+        <td>JSON matching the node's Zod output schema</td>
+        <td>No documented Gateway RPC. The documented answer path is the CLI. <span class="chip gap">CLI only</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><code>&lt;HumanTask&gt;</code> is the natural-looking choice for “a human fills in a form”, and it is a trap if the form lives in a browser. Its documented resolution path is an operator command:</p>
+
+  <p class="file term">clearing a HumanTask</p>
+<pre><code><span class="ps">$</span> smithers human inbox                                  <span class="com"># find the requestId</span>
+<span class="ps">$</span> smithers human answer <span class="pn">&lt;</span>requestId<span class="pn">&gt;</span> --value <span class="str">'{"severity":"high"}'</span></code></pre>
+
+  <p>None of the 41 Gateway RPC methods answers a human request. So when the decision is <strong>richer than a verdict and must happen in your UI</strong>, model it as a signal — the payload is free-form and the write path is fully supported:</p>
+
+  <div class="two">
+    <div>
+      <p class="file">.smithers/workflows/triage.tsx</p>
+<pre><code><span class="pn">&lt;</span><span class="tag">WaitForEvent</span>
+  <span class="at">id</span>=<span class="str">"pick-tickets"</span>
+  <span class="at">event</span>=<span class="str">"triage-choice"</span>
+  <span class="at">correlationId</span>=<span class="str">"triage-choice"</span>
+  <span class="at">output</span>=<span class="pn">{</span>outputs.choice<span class="pn">}</span>
+<span class="pn">/&gt;</span></code></pre>
+    </div>
+    <div>
+      <p class="file">.smithers/ui/triage.tsx</p>
+<pre><code><span class="kw">const</span> { submitSignal } = <span class="fn">useGatewayActions</span>()
+
+<span class="fn">submitSignal</span>({
+  runId,
+  correlationKey: <span class="str">"triage-choice"</span>,
+  payload: { keys: checked },
+})</code></pre>
+    </div>
+  </div>
+
+  <p class="callout warn">The <code>correlationKey</code> you send must equal the node's <code>correlationId</code>. The Gateway enforces the match, so a typo is a rejected write rather than a silently lost decision.</p>
+
+  <p>And <code>&lt;Approval&gt;</code> itself has two richer modes — <code>mode="select"</code> persists <code>{ selected, notes }</code> and <code>mode="rank"</code> persists <code>{ ranked, notes }</code>, both driven by an <code>options: ApprovalOption[]</code> list. Worth knowing they exist; note that every documented <code>submitApproval</code> example sends the approve/deny shape, so if you need select or rank <em>from the browser</em>, verify that path against your own version before building on it.</p>
+
+  <h2 id="s5"><span class="n">05</span>The two <code>triage.tsx</code> files</h2>
+
+  <p>This is the whole connection, and it is smaller than people expect: <strong>there are two files named <code>triage.tsx</code>, they never import each other, and the only thing joining them is a pair of matching strings.</strong></p>
+
+  <div class="two">
+    <div class="box smith">
+      <span class="t">file A · the graph</span>
+      <p><code>.smithers/workflows/triage.tsx</code> — runs on the server. Contains the <code>&lt;Approval&gt;</code> nodes and one <code>&lt;UI&gt;</code> declaration.</p>
+    </div>
+    <div class="box smith">
+      <span class="t">file B · the browser bundle</span>
+      <p><code>.smithers/ui/triage.tsx</code> — runs in the tab. The Gateway builds it and serves it at <code>/workflows/triage</code>.</p>
+    </div>
+  </div>
+
+  <p class="file">.smithers/workflows/triage.tsx</p>
+<pre><code><span class="pn">&lt;</span><span class="tag">Workflow</span> <span class="at">name</span>=<span class="str">"triage"</span><span class="pn">&gt;</span>
+  <span class="hl">&lt;UI entry="../ui/triage.tsx" title="Triage" /&gt;</span>   <span class="com">// ← link 1: which bundle</span>
+
+  <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"classify"</span> <span class="at">output</span>=<span class="pn">{</span>outputs.tickets<span class="pn">}</span> <span class="at">agent</span>=<span class="pn">{</span>triager<span class="pn">}</span><span class="pn">&gt;</span>
+    Classify every open Sentry issue into a ticket.
+  <span class="pn">&lt;/</span><span class="tag">Task</span><span class="pn">&gt;</span>
+
+  <span class="pn">&lt;</span><span class="tag">Approval</span>
+    <span class="at">id</span>=<span class="hl">"triage-approve"</span>                          <span class="com">// ← link 2: the nodeId</span>
+    <span class="at">output</span>=<span class="pn">{</span>outputs.verdict<span class="pn">}</span>
+    <span class="at">request</span>=<span class="pn">{{</span> title: <span class="str">"Ship these fixes?"</span> <span class="pn">}}</span>
+    <span class="at">onDeny</span>=<span class="str">"skip"</span>
+  <span class="pn">/&gt;</span>
+
+  <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"fix"</span> <span class="at">needs</span>=<span class="pn">{{</span> ok: <span class="str">"triage-approve"</span> <span class="pn">}}</span> <span class="at">agent</span>=<span class="pn">{</span>implementer<span class="pn">}</span> <span class="pn">…&gt;</span>
+<span class="pn">&lt;/</span><span class="tag">Workflow</span><span class="pn">&gt;</span></code></pre>
+
+  <p><strong>Link 1 — <code>&lt;UI entry&gt;</code> pairs a workflow key to a bundle.</strong> When the launcher registers the workflow with an <code>entryFile</code>, the Gateway resolves the entry relative to it, builds it, and serves it at <code>/workflows/triage</code>. <code>smithers ui &lt;run&gt;</code> opens that page with a stable <code>?runId=</code> deep link, starting a Gateway first if none answers on the local port. The page is same-origin with <code>/v1/rpc</code>, which is why <code>new SmithersGatewayClient()</code> needs no base URL: the Gateway sets a <code>__SMITHERS_GATEWAY_UI__</code> global carrying <code>workflowKey</code>, <code>mountPath</code>, <code>rpcPath</code> and <code>wsPath</code> before your bundle parses.</p>
+
+  <p><strong>Link 2 — the <code>nodeId</code> string is the contract.</strong> The <code>"triage-approve"</code> your UI passes to <code>submitApproval</code> is the same string as the <code>id</code> prop on the <code>&lt;Approval&gt;</code>. There is no generated client and no shared type between the two files; a renamed node id is a silently broken button. Keep gate ids as string literals, the same way the runtime already requires stable task ids.</p>
+
+  <div class="box">
+    <span class="t">the round trip, end to end</span>
+    <ol>
+      <li><code>classify</code> finishes and persists <code>outputs.tickets</code>.</li>
+      <li><code>&lt;Approval id="triage-approve"&gt;</code> mounts, writes a pending row, parks the lane. The process may exit.</li>
+      <li>The tab at <code>/workflows/triage?runId=…</code> sees the gate via <code>useGatewayApprovals</code>, and renders the tickets via <code>useGatewayNodeOutput(runId, "classify")</code>.</li>
+      <li>A human clicks Approve. <code>submitApproval</code> writes the decision row.</li>
+      <li>The next frame reads it; <code>fix</code>, which <code>needs</code> the gate, joins the ready set.</li>
+    </ol>
+  </div>
+
+  <h2 id="s6"><span class="n">06</span>Who is allowed to decide</h2>
+
+  <p>Two independent layers, and you generally want both:</p>
+
+  <ul>
+    <li><strong>At the Gateway</strong> — writing a decision requires the <code>approval:submit</code> scope. Auth is token, JWT, or trusted-proxy; JWT reads scopes from <code>scope</code>, role from <code>role</code>, and user id from <code>sub</code>. Runs started through the Gateway expose <code>ctx.auth = { triggeredBy, role, scopes, createdAt }</code>.</li>
+    <li><strong>At the node</strong> — <code>&lt;Approval allowedScopes&gt;</code> and <code>&lt;Approval allowedUsers&gt;</code> narrow a specific gate further, so “anyone on the team may approve a docs change, only two people may approve a deploy” is expressible in the graph rather than in the UI.</li>
+  </ul>
+
+  <p>Because the UI is just an RPC client, an unauthorised click fails at the Gateway and not in your component — the button does not need to know the policy, and a hand-rolled UI cannot accidentally widen it.</p>
+
+  <div class="box smith">
+    <span class="t">if you take one thing</span>
+    <p>Model the human's decision as <code>&lt;Approval&gt;</code> for a verdict or <code>&lt;WaitForEvent&gt;</code> for a payload, keep the <em>context</em> in the upstream task's typed output, and let the UI be a thin reader of both. The gate stays clearable from the CLI when the browser is not around — which is what makes the UI optional rather than load-bearing.</p>
+  </div>
+
+  <footer>
+    Sourced from the Smithers agent docs bundle (<code>smithers docs-full</code>, 21,612 lines, v0.31.0) — Custom Workflow UIs, Gateway RPC (41 methods), Gateway React hook reference, Gateway UI component table, and the <code>&lt;Approval&gt;</code> / <code>&lt;HumanTask&gt;</code> / <code>&lt;Signal&gt;</code> component pages.<br />
+    <a href="https://smithers.sh">smithers.sh</a> · <a href="https://github.com/smithersai/smithers">github.com/smithersai/smithers</a> · <code>smithers ask "..."</code>
+  </footer>
+
+</div>

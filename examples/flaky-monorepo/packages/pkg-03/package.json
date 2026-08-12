@@ -1,0 +1,7 @@
+{
+  "name": "pkg-03",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "chunk: one small pure function with one real defect."
+}

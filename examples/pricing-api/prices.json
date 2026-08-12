@@ -1,0 +1,8 @@
+{
+  "currency": "USD",
+  "tiers": [
+    { "id": "free", "monthly": 0, "includedSeats": 1, "overagePerSeat": 0 },
+    { "id": "team", "monthly": 4900, "includedSeats": 5, "overagePerSeat": 900 },
+    { "id": "scale", "monthly": 24900, "includedSeats": 25, "overagePerSeat": 700 }
+  ]
+}

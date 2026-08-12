@@ -1,0 +1,10 @@
+{
+  "name": "flaky-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "bun test packages",
+    "typecheck": "bunx tsc --noEmit"
+  }
+}

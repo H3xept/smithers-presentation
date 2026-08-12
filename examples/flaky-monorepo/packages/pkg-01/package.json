@@ -1,0 +1,7 @@
+{
+  "name": "pkg-01",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "slugify: one small pure function with one real defect."
+}

@@ -1,0 +1,7 @@
+{
+  "name": "pkg-08",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "truncate: one small pure function with one real defect."
+}

@@ -1,0 +1,7 @@
+{
+  "name": "pkg-04",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "titleCase: one small pure function with one real defect."
+}

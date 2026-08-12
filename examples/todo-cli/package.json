@@ -1,0 +1,9 @@
+{
+  "name": "todo-cli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test src",
+    "todo": "bun src/cli.ts"
+  }
+}

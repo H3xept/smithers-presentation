@@ -325,6 +325,10 @@
   .step.smithy { border-color: var(--smith); background: linear-gradient(180deg, rgba(91,147,255,.10), rgba(91,147,255,.02)); }
   .step.smithy .t { color: var(--smith); }
 
+  /* ---------- three-route viz (s6) ---------- */
+  .modeviz { display:block; width:100%; height:auto; margin:.2rem 0 1.1rem; }
+  @media (max-height: 780px) { .modeviz { margin:0 0 .6rem; } }
+
   /* ---------- render loop strip ---------- */
   .loopflow { display:flex; align-items:center; gap:.55rem; flex-wrap:wrap; margin:1.4rem 0 0; }
   .loopflow .fbox { font-family:var(--mono); font-size:clamp(.72rem,1.1vw,.88rem); border:1px solid var(--line); background:var(--ground-2); border-radius:4px; padding:.7rem .95rem; color:var(--ink); }
@@ -486,6 +490,27 @@
   .rb .what b { color:var(--ink); font-weight:600; }
   .rb .what code { font-family:var(--mono); color:var(--cyan); font-size:.86em; }
 
+  /* ---------- presenter mode: gates the runbook appendix ---------- */
+  .pres-only { display: none; }
+  .deck.presenting .pres-only { display: block; }
+  .deck.presenting .pres-lock { display: none; }
+  .pres-switch {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    background: var(--ground-2);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .7rem 1.1rem;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+  }
+  .pres-switch:hover { color: var(--ember); border-color: var(--ember); }
+  .pres-switch:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .deck.presenting .pres-switch { color: var(--ember); border-color: var(--ember-deep); }
+
   /* ---------- chrome ---------- */
   .frame {
     position: fixed; top: 0; left: 0; right: 0;
@@ -558,6 +583,141 @@
     .progress { transition: none; }
     .live { animation: none; }
   }
+
+  /* ---------- review mode: per-slide comments ---------- */
+  .cbtn {
+    font-family: var(--mono);
+    background: var(--ground-2);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    height: 2.4rem;
+    padding: 0 .75rem;
+    font-size: .68rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    transition: border-color .2s, color .2s;
+  }
+  .cbtn:hover { color: var(--ember); border-color: var(--ember); }
+  .cbtn:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; }
+  .cbtn .badge {
+    position: absolute; top: -.45rem; right: -.45rem;
+    min-width: 1.15rem; height: 1.15rem;
+    border-radius: 999px;
+    background: var(--ember); color: var(--ground);
+    font-size: .62rem; font-weight: 700;
+    display: none; align-items: center; justify-content: center;
+    padding: 0 .3rem;
+  }
+  .cbtn .badge.on { display: flex; }
+
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: min(400px, 92vw);
+    background: var(--ground-2);
+    border-left: 1px solid var(--line);
+    z-index: 20;
+    display: flex; flex-direction: column;
+    transform: translateX(102%);
+    transition: transform .28s cubic-bezier(.16,1,.3,1);
+    box-shadow: -18px 0 48px rgba(0,0,0,.45);
+  }
+  .drawer.open { transform: none; }
+  .drawer header {
+    padding: 1.1rem 1.2rem .9rem;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  }
+  .drawer header .who {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--ember);
+  }
+  .drawer header .st { font-size: .92rem; color: var(--ink); margin-top: .45rem; line-height: 1.35; }
+  .drawer .x {
+    background: none; border: none; color: var(--ink-faint);
+    font-size: 1.1rem; cursor: pointer; line-height: 1; padding: .1rem .2rem;
+  }
+  .drawer .x:hover { color: var(--ink); }
+  .drawer .body { padding: 1.1rem 1.2rem; flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .drawer textarea {
+    width: 100%; flex: 1; min-height: 9rem; resize: none;
+    background: var(--ground-3); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: .8rem .9rem;
+    font-family: var(--sans); font-size: .92rem; line-height: 1.5;
+  }
+  .drawer textarea:focus { outline: none; border-color: var(--ember); }
+  .drawer .hintline {
+    font-family: var(--mono); font-size: .64rem; color: var(--ink-faint);
+    margin-top: .7rem; letter-spacing: .08em;
+  }
+  .drawer .hintline kbd {
+    border: 1px solid var(--line); border-radius: 3px; padding: .05rem .3rem; color: var(--ink-dim);
+  }
+  .drawer footer { padding: .9rem 1.2rem 1.1rem; border-top: 1px solid var(--line); display: grid; gap: .55rem; }
+  .drawer footer .rowb { display: flex; gap: .5rem; }
+  .drawer footer button {
+    flex: 1; font-family: var(--mono); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; padding: .6rem .5rem; cursor: pointer;
+    background: var(--ground-3); color: var(--ink-dim);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .drawer footer button:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .drawer footer button.primary {
+    background: var(--ember); color: var(--ground); border-color: var(--ember); font-weight: 700;
+  }
+  .drawer footer button.primary:hover { background: var(--ember-2); border-color: var(--ember-2); }
+  .drawer footer .meta {
+    font-family: var(--mono); font-size: .62rem; color: var(--ink-faint);
+    letter-spacing: .1em; text-align: center;
+  }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(4,6,10,.82); z-index: 30;
+    display: none; align-items: center; justify-content: center;
+    padding: clamp(1rem, 4vw, 3rem);
+  }
+  .modal.open { display: flex; }
+  .modal-card {
+    background: var(--ground-2); border: 1px solid var(--line); border-radius: 6px;
+    width: min(920px, 100%); max-height: 86vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-card header {
+    padding: 1.05rem 1.3rem; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+  }
+  .modal-card header h3 { font-family: var(--mono); font-size: 1rem; margin: 0; color: var(--ink); font-weight: 600; }
+  .modal-card header .sub { font-family: var(--mono); font-size: .66rem; color: var(--ink-faint); letter-spacing: .1em; }
+  .modal-card textarea {
+    flex: 1; min-height: 46vh; border: none; background: var(--ground-3); color: var(--ink);
+    font-family: var(--mono); font-size: .76rem; line-height: 1.55;
+    padding: 1rem 1.3rem; resize: none; width: 100%;
+  }
+  .modal-card textarea:focus { outline: none; }
+  .modal-card footer {
+    padding: .9rem 1.3rem; border-top: 1px solid var(--line);
+    display: flex; gap: .6rem; justify-content: flex-end; flex-wrap: wrap;
+  }
+  .modal-card footer button {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase;
+    padding: .6rem 1.1rem; cursor: pointer; background: var(--ground-3); color: var(--ink-dim);
+    border: 1px solid var(--line); border-radius: 4px;
+  }
+  .modal-card footer button:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .modal-card footer button.primary {
+    background: var(--smith); color: var(--ground); border-color: var(--smith); font-weight: 700;
+  }
+
+  /* keep the slide readable while you comment on it */
+  @media (min-width: 900px) {
+    .deck.reviewing .slide { padding-right: calc(var(--pad) + 400px); }
+    .deck.reviewing .slide-inner { margin-left: 0; }
+  }
+  .deck .slide { transition: padding-right .28s cubic-bezier(.16,1,.3,1); }
+
+  @media print { .drawer, .modal, .nav, .hint { display: none !important; } }
 </style>
 
 <div class="deck" id="deck">
@@ -585,7 +745,7 @@
   <section class="slide" id="s2">
     <div class="slide-inner">
       <p class="eyebrow">The thing you already do</p>
-      <h2 class="headline">You already run agents unattended.<br />Nothing <span class="accent">survives the night</span>.</h2>
+      <h2 class="headline">You already run agents unattended.<br />The <span class="accent">work</span> doesn't survive a restart.</h2>
       <p class="lead wide" style="margin-bottom:1.6rem">Everyone in this room has a <code style="font-family:var(--mono);color:var(--cyan)">while true</code> around a coding agent, or a script that fires one on a webhook. It works right up until it doesn't:</p>
       <div class="cols four">
         <div class="card"><span class="k">03:12</span><h3>Laptop sleeps</h3><p>Six hours of reasoning gone. The next run starts from an empty context and the half-finished branch.</p></div>
@@ -594,6 +754,7 @@
         <div class="card"><span class="k">?</span><h3>No idea why</h3><p>It went sideways somewhere around turn 40. There is no frame to go stand at.</p></div>
       </div>
       <p class="callout">The agent isn't the missing piece. The <em>control plane around it</em> is.</p>
+      <p class="note" style="margin-top:1.1rem">// scope check, so the rest of this talk is honest: Smithers is a process <b>you</b> run, not a hosted service. Close the lid and the run still stops — what changes is that every finished node is already persisted, so the next start resumes instead of restarting, and <code style="color:var(--cyan)">smithers supervise</code> auto-resumes runs whose owner process died. Running genuinely overnight still needs a machine that stays awake.</p>
     </div>
   </section>
 
@@ -615,16 +776,26 @@
     <div class="slide-inner">
       <p class="eyebrow smith">The whole mental model, once</p>
       <h2 class="headline">Every frame asks one question:<br /><span class="accent-smith">what can run now?</span></h2>
-      <p class="lead wide">Smithers re-renders your workflow tree every frame against persisted state. Runnable nodes dispatch a real coding agent; the output is validated against a Zod schema, written to a row, and the tree renders again. Completed nodes are skipped — never re-run.</p>
+      <p class="lead wide">Smithers is a React reconciler whose host elements are tasks. Each render flattens the tree into a list of task descriptors — id, dependencies, output schema, agent, retries — and the scheduler picks the <strong>ready set</strong> out of that list.</p>
       <div class="loopflow">
         <span class="fbox">render the tree</span><span class="ar">→</span>
-        <span class="fbox">what's runnable?</span><span class="ar">→</span>
-        <span class="fbox hi">dispatch an agent</span><span class="ar">→</span>
-        <span class="fbox">validate w/ Zod</span><span class="ar">→</span>
+        <span class="fbox">flatten to descriptors</span><span class="ar">→</span>
+        <span class="fbox hi">compute the ready set</span><span class="ar">→</span>
+        <span class="fbox">execute · validate w/ Zod</span><span class="ar">→</span>
         <span class="fbox ok">persist the row</span><span class="ar back">↺</span>
       </div>
-      <p class="callout smith" style="margin-top:1.8rem">That is the entire trick. Retries, approvals, loops, worktrees, evals, time travel — all of it is a component composed over <em>that</em>.</p>
-      <p class="note">// this is why it's JSX and not YAML: the graph is a function of state, so it can be conditional, mapped over data, and typed.</p>
+      <div class="cols two" style="margin-top:1.5rem">
+        <ul class="list tight smith">
+          <li>every id in <code style="font-family:var(--mono);color:var(--cyan)">dependsOn</code> is terminal <span>— and every <code style="font-family:var(--mono)">deps</code> entry has a persisted row</span></li>
+          <li>its <code style="font-family:var(--mono);color:var(--cyan)">&lt;Sequence&gt;</code> has reached it</li>
+          <li>its <code style="font-family:var(--mono);color:var(--cyan)">&lt;Branch&gt;</code> resolved to it</li>
+          <li>it fits <code style="font-family:var(--mono);color:var(--cyan)">maxConcurrency</code> <span>— higher <code style="font-family:var(--mono)">priority</code> claims free slots first</span></li>
+        </ul>
+        <div>
+          <p class="lead">A node is skipped rather than re-run because its output row already exists: outputs are keyed by <code style="font-family:var(--mono);color:var(--cyan);font-size:.84em">(runId, nodeId, iteration)</code>. Same input plus same code gives the same ids, so the next frame reads the same rows.</p>
+          <p class="note" style="margin-top:.9rem">// a dependency on an id no task produces can never join the ready set — the run fails with <code style="color:var(--cyan)">DEPENDENCY_DEADLOCK</code> naming the stuck task, rather than hanging.</p>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -635,8 +806,8 @@
       <h2 class="headline">Every finished node is a <span class="accent-smith">row</span>.</h2>
       <div class="cols two">
         <div>
-          <p class="lead">The run is not a process — it's a table of frames. Kill the machine mid-run, restart, and it picks up at the node it was on. Nodes 01 and 02 are never paid for twice.</p>
-          <p class="callout smith">An always-on agent that restarts from scratch after a crash isn't autonomous. It's a very expensive random number generator.</p>
+          <p class="lead">A run is a table of frames. Each node writes its validated output the moment it finishes, so restarting picks up at the node it was on and nodes 01 and 02 are paid for once.</p>
+          <p class="callout smith">In-flight attempts are marked stale and retried on resume. Same input plus same code gives the same task ids, so a resume lands deterministically.</p>
         </div>
         <div>
           <div class="frames">
@@ -660,6 +831,36 @@
     <div class="slide-inner">
       <p class="eyebrow">How you actually use it</p>
       <h2 class="headline">Three routes in. Take the <span class="accent">lightest</span> one that keeps the durability you need.</h2>
+      <svg class="modeviz" viewBox="0 0 1180 118" role="img" aria-label="Three routes compared. Direct: a single agent turn with no run record. Oneshot: one node above one persisted row. Workflow: a fan-out and join above five persisted rows.">
+        <line x1="393" y1="10" x2="393" y2="108" stroke="#232C3D" stroke-width="1"></line>
+        <line x1="787" y1="10" x2="787" y2="108" stroke="#232C3D" stroke-width="1"></line>
+
+        <circle cx="197" cy="42" r="13" fill="#121826" stroke="#5B6679" stroke-width="2.5"></circle>
+        <rect x="141" y="70" width="112" height="19" rx="3" fill="none" stroke="#232C3D" stroke-width="1.5" stroke-dasharray="5 4"></rect>
+        <text x="197" y="84" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="10.5">no run record</text>
+        <text x="197" y="108" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="11.5">nothing to resume</text>
+
+        <circle cx="590" cy="42" r="14" fill="#121826" stroke="#FF8A4C" stroke-width="2.5"></circle>
+        <circle cx="590" cy="42" r="5" fill="#FF8A4C"></circle>
+        <line x1="590" y1="56" x2="590" y2="70" stroke="#FF8A4C" stroke-width="1.5"></line>
+        <rect x="560" y="70" width="60" height="19" rx="3" fill="rgba(255,138,76,0.16)" stroke="#FF8A4C" stroke-width="1.5"></rect>
+        <text x="590" y="108" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="11.5">one resumable run</text>
+
+        <path d="M983 26 L949 46 M983 26 L983 46 M983 26 L1017 46 M949 46 L983 62 M983 46 L983 62 M1017 46 L983 62" stroke="#5B93FF" stroke-width="1.5" fill="none" opacity="0.75"></path>
+        <circle cx="983" cy="24" r="7" fill="#121826" stroke="#5B93FF" stroke-width="2.2"></circle>
+        <circle cx="949" cy="46" r="6.5" fill="#121826" stroke="#5B93FF" stroke-width="2.2"></circle>
+        <circle cx="983" cy="46" r="6.5" fill="#121826" stroke="#5B93FF" stroke-width="2.2"></circle>
+        <circle cx="1017" cy="46" r="6.5" fill="#121826" stroke="#5B93FF" stroke-width="2.2"></circle>
+        <circle cx="983" cy="62" r="7" fill="#121826" stroke="#6FD08C" stroke-width="2.2"></circle>
+        <g fill="rgba(91,147,255,0.16)" stroke="#5B93FF" stroke-width="1.5">
+          <rect x="910" y="70" width="26" height="19" rx="2"></rect>
+          <rect x="940" y="70" width="26" height="19" rx="2"></rect>
+          <rect x="970" y="70" width="26" height="19" rx="2"></rect>
+          <rect x="1000" y="70" width="26" height="19" rx="2"></rect>
+          <rect x="1030" y="70" width="26" height="19" rx="2"></rect>
+        </g>
+        <text x="983" y="108" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="11.5">a row per node</text>
+      </svg>
       <div class="steps" style="margin-top:.4rem">
         <div class="step">
           <div class="n">TIER 0</div><div class="t">Direct</div>
@@ -677,7 +878,7 @@
           <span class="cmd">smithers up wf.tsx --interactive</span>
         </div>
       </div>
-      <p class="callout" style="margin-top:1.8rem">If a procedure <strong>recurs</strong>, that's the argument for a workflow over a skill. A skill is static prose an agent re-interprets every time. A workflow is executable, durable, typed, inspectable — and measurable.</p>
+      <p class="callout" style="margin-top:1.4rem">If a procedure <strong>recurs</strong>, that's the argument for a workflow over a skill: a workflow is executable, durable, typed, inspectable and measurable, where a skill is prose an agent re-reads every time.</p>
     </div>
   </section>
 
@@ -770,7 +971,7 @@
       <table class="maptable compact">
         <thead><tr><th>path</th><th>what it is</th><th>edit it?</th></tr></thead>
         <tbody>
-          <tr><td><code>agents.ts</code></td><td><strong>Who</strong> does the work — named agent pools mapped to provider instances. Generated from your registered accounts.</td><td>rarely</td></tr>
+          <tr><td><code>agents.ts</code></td><td><strong>Who</strong> does the work — named agent pools mapped to provider instances. Scaffolded from your registered accounts, then tuned by hand. This is the seam.</td><td>tune it</td></tr>
           <tr><td><code>smithers.config.ts</code></td><td><code>repoCommands { lint, test, coverage }</code> — the real scripts workflows shell out to.</td><td>once</td></tr>
           <tr><td><code>workflows/*.tsx</code></td><td><strong>What</strong> happens, in what order. One executable graph per file.</td><td>yes</td></tr>
           <tr><td><code>prompts/*.mdx</code></td><td><strong>What to tell</strong> the agent. The default authoring surface — plain Markdown.</td><td>yes</td></tr>
@@ -782,6 +983,7 @@
       </div>
       <p class="callout" style="margin-top:1.4rem">Check the sources in. A graph in the repo is a graph the next engineer — and the next agent — inherits.</p>
       <p class="note">// gotcha we hit: the default <code style="color:var(--cyan)">.gitignore</code> line ignores <code>.smithers/</code> wholesale. Narrow it to the runtime dirs or every workflow you write is invisible to the team.</p>
+      <p class="note">// second gotcha: the generated <code>agents.ts</code> starts with a <code style="color:var(--cyan)">// smithers-source: generated</code> sentinel, and <code>smithers agent add</code> rewrites any file that still has it. Delete the line once you've tuned your pools.</p>
     </div>
   </section>
 
@@ -851,23 +1053,33 @@
   <section class="slide" id="s13">
     <div class="slide-inner">
       <p class="eyebrow">Benefit 2 · the part autonomy talk skips</p>
-      <h2 class="headline">Waiting for a human is a <span class="accent">first-class state</span>.</h2>
-      <div class="cols two">
+      <h2 class="headline">Waiting for a human is <span class="accent">a node</span>.</h2>
+      <p class="lead wide">Reaching a gate persists a pending decision and parks the run: the scheduler hands out no more work in that lane and the process may exit. The decision arrives later as another row — CLI, Gateway RPC, or the approval banner in the monitor — and the next frame reads it and continues.</p>
+      <div class="cols two" style="margin-top:1.2rem">
         <div>
-          <p class="lead">“Fully autonomous” is a marketing position, not an engineering one. Real graphs stop and ask. The only question is whether stopping is <strong>cheap</strong>.</p>
-          <p class="lead">In a loop, waiting three days for a human means a process pinned open for three days. In a graph the run parks durably: zero tokens, zero compute, resumable from a CLI call, an RPC, or a button in the UI.</p>
-          <p class="callout">A gate that costs nothing to wait at is a gate you'll actually use.</p>
+          <div class="code" data-file=".smithers/workflows/ship.tsx">
+<pre><span class="pn">&lt;</span><span class="tag">Approval</span>
+  <span class="at">id</span>=<span class="str">"approve-deploy"</span>
+  <span class="at">async</span>                       <span class="com">// other lanes keep going</span>
+  <span class="at">output</span>=<span class="pn">{</span>outputs.deployApproval<span class="pn">}</span>
+  <span class="at">onDeny</span>=<span class="str">"skip"</span>            <span class="com">// fail | continue | skip</span>
+  <span class="at">request</span>=<span class="pn">{{</span> title: <span class="str">"Ship to prod?"</span> <span class="pn">}}</span>
+<span class="pn">/&gt;</span>
+<span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"deploy"</span> <span class="at">needs</span>=<span class="pn">{{</span> ok: <span class="str">"approve-deploy"</span> <span class="pn">}}</span> <span class="pn">…&gt;</span></pre>
+          </div>
+          <p class="note" style="margin-top:.9rem">// the decision row is keyed on (run, node, iteration), so it survives restarts. <code style="color:var(--cyan)">mode="select"</code> and <code style="color:var(--cyan)">mode="rank"</code> return a choice or an ordering instead of a yes/no.</p>
         </div>
         <div>
           <ul class="list tight">
-            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;ApprovalGate&gt;</code> <span>— a gate you declared up front; deny can fail, skip, or continue</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;Approval&gt;</code> <span>— a gate you declared up front. <code style="font-family:var(--mono)">&lt;ApprovalGate&gt;</code> is the same thing behind a <code style="font-family:var(--mono)">when</code>, auto-approving otherwise</span></li>
             <li><code style="font-family:var(--mono);color:var(--cyan)">ask-human</code> <span>— an agent stuck <em>mid-task</em> raises a durable question and blocks. Exit 0 with the answer, non-zero on deny or timeout</span></li>
             <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;Signal&gt;</code> / <code style="font-family:var(--mono);color:var(--cyan)">&lt;WaitForEvent&gt;</code> <span>— park until CI, a webhook, or a correlated payload arrives</span></li>
-            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;Timer&gt;</code> <span>— a durable sleep, not a held thread</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;Timer&gt;</code> <span>— a durable sleep the Gateway wakes on its scheduler tick</span></li>
           </ul>
-          <div class="code term" data-file="clearing it from the other side" style="margin-top:1.2rem">
-<pre><span class="ps">$</span> smithers why <span class="pn">&lt;</span>run<span class="pn">&gt;</span>       <span class="com"># why is it blocked?</span>
-<span class="ps">$</span> smithers human inbox
+          <div class="code term" data-file="clearing it from the other side" style="margin-top:1.1rem">
+<pre><span class="ps">$</span> smithers why <span class="pn">&lt;</span>run<span class="pn">&gt;</span>   <span class="com"># names the blocker + the</span>
+                        <span class="com"># exact command to unblock</span>
+<span class="ps">$</span> smithers human inbox   <span class="com"># pending questions + ids</span>
 <span class="ps">$</span> smithers approve <span class="pn">&lt;</span>run<span class="pn">&gt;</span> --node ship --by leo</pre>
           </div>
         </div>
@@ -897,43 +1109,11 @@
     </div>
   </section>
 
-  <!-- 15 · MEASURE IT -->
-  <section class="slide" id="s15">
-    <div class="slide-inner">
-      <p class="eyebrow">Benefit 4 · the one that compounds</p>
-      <h2 class="headline">Prompt iteration, with <span class="accent">teeth</span> instead of vibes.</h2>
-      <div class="cols two">
-        <div>
-          <p class="lead">The reason we all fiddle with prompts is to make the agent better at a task. A workflow gives that loop a number, because every run is already a labeled example: this prompt, this context, these tools → this trace, this outcome.</p>
-          <p class="callout">A loop has no score. A graph has a score per node.</p>
-          <p class="note">// honest caveat: field-wide eval-driven development for coding agents is still under-evidenced. There's no settled playbook — but a regression suite beats a hunch.</p>
-        </div>
-        <div>
-          <div class="code term" data-file="did my change help?">
-<pre><span class="ps">$</span> smithers eval wf.tsx \
-    --cases evals/suite.jsonl --suite smoke
-
-<span class="ps">$</span> smithers scores <span class="pn">&lt;</span>run<span class="pn">&gt;</span>
-
-<span class="com"># GEPA searches prompt variants against the suite</span>
-<span class="ps">$</span> smithers optimize wf.tsx --cases evals/suite.jsonl</pre>
-          </div>
-          <ul class="list tight smith" style="margin-top:1.2rem">
-            <li>five built-in scorers <span>— schema adherence, latency, relevancy, toxicity, faithfulness</span></li>
-            <li><code style="font-family:var(--mono);color:var(--cyan)">llmJudge(...)</code> <span>— a rubric on any task</span></li>
-            <li>they never block <span>— sample the expensive ones with <code style="font-family:var(--mono)">ratio</code></span></li>
-            <li><code style="font-family:var(--mono);color:var(--cyan)">memory</code> <span>— cross-run facts, so run N+1 knows what run N learned</span></li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </section>
-
   <!-- 16 · THE SEAM -->
   <section class="slide" id="s16">
     <div class="slide-inner">
-      <p class="eyebrow smith">Benefit 5 · and the hinge of the last act</p>
-      <h2 class="headline">The graph is the constant. The <span class="accent-smith">engine</span> is the variable.</h2>
+      <p class="eyebrow smith">Benefit 4 · and the hinge of the last act</p>
+      <h2 class="headline">A tiny DSL for the shape. The <span class="accent-smith">runtime</span> is bound separately.</h2>
       <div class="cols two" style="align-items:center">
         <div class="seam">
           <div class="seam-band"><div class="k">the author writes — the shape of the work</div><div class="v">Sequence · Parallel · Loop · Branch · Task</div></div>
@@ -943,7 +1123,8 @@
           <div class="seam-band below"><div class="k">isolation — where it runs</div><div class="v">host · worktree · docker · bubblewrap · cloud</div></div>
         </div>
         <div>
-          <p class="lead">A <code style="font-family:var(--mono);color:var(--smith)">&lt;Task&gt;</code> names a <em>role</em> — <code style="font-family:var(--mono)">implementer</code>, <code style="font-family:var(--mono)">reviewer</code>, <code style="font-family:var(--mono)">grunt</code>. Which model, which harness, which thinking level, which box: all of that is bound once, in <code style="font-family:var(--mono);color:var(--cyan)">agents.ts</code>. Swapping the worker is a one-line edit that never touches the graph.</p>
+          <p class="lead">The DSL is deliberately tiny. Five host elements carry the shape — <code style="font-family:var(--mono);color:var(--smith)">Task</code>, <code style="font-family:var(--mono);color:var(--smith)">Sequence</code>, <code style="font-family:var(--mono);color:var(--smith)">Parallel</code>, <code style="font-family:var(--mono);color:var(--smith)">Loop</code>, <code style="font-family:var(--mono);color:var(--smith)">Branch</code> — and a <code style="font-family:var(--mono);color:var(--smith)">&lt;Task&gt;</code> names only a <em>role</em>: <code style="font-family:var(--mono)">implementer</code>, <code style="font-family:var(--mono)">reviewer</code>, <code style="font-family:var(--mono)">grunt</code>.</p>
+          <p class="lead">You bind the runtime once, in <code style="font-family:var(--mono);color:var(--cyan)">agents.ts</code>: model, harness, thinking level, box. Swapping the worker is a one-line edit the graph never sees.</p>
           <div class="chips" style="margin-top:1.1rem">
             <span class="on">OmpAgent</span><span>ClaudeCodeAgent</span><span>CodexAgent</span><span>KimiAgent</span><span>GeminiAgent</span><span>PiAgent</span><span>AmpAgent</span><span>ForgeAgent</span><span>CursorAgent</span><span>OpenCodeAgent</span><span>OpenClawAgent</span><span>VibeAgent</span><span>AntigravityAgent</span><span>PoolAgent</span><span>AnthropicAgent</span><span class="local">OpenAIAgent</span><span class="local">HermesAgent</span><span>HermesCliAgent</span><span>ElizaAgent</span>
           </div>
@@ -987,7 +1168,7 @@
         <div>
           <p class="lead">That is exactly the shape of work a <strong>self-hostable model</strong> is already good enough to do — and a Zod schema plus a scorer catches it when it isn't.</p>
           <p class="callout">The orchestration, the verification and the budget that keep a small model honest live in the graph <em>around</em> it. Per-node routing is what lets you actually spend the cheap model.</p>
-          <p class="note">// sandwich delegation: expensive models plan and review at the ends, cheap models implement the middle.</p>
+          <p class="note">// their term, not mine — the Smithers docs call this <b>sandwich delegation</b>: “smart, expensive agents plan and review at the two ends, cheaper agents implement in the middle.”</p>
         </div>
       </div>
     </div>
@@ -1106,14 +1287,14 @@
   <!-- 22 · CLOSING -->
   <section class="slide" id="s22">
     <div class="slide-inner">
-      <p class="eyebrow">If you remember three things</p>
-      <h2 class="headline">Persist it. Gate it. Bind late.</h2>
+      <p class="eyebrow">Three things to take away</p>
+      <h2 class="headline">What Smithers actually gives you.</h2>
       <div class="stick">
-        <div class="item"><div class="t">Durable beats autonomous.<span>Every finished node is a row. Crash-resume, rewind, fork and replay are the difference between an agent that runs for days and one that merely <em>starts</em> for days.</span></div></div>
-        <div class="item"><div class="t">Stopping to ask must be free.<span>A parked run is a row, not a pinned process. Approvals and <code style="font-family:var(--mono)">ask-human</code> cost nothing to wait at, which is the only reason anyone puts them in.</span></div></div>
-        <div class="item"><div class="t">The node is the unit of cost — and of freedom.<span>Bind the engine per role in one file. That's how you spend a cheap model where it's safe, and it's how self-hosting becomes an incremental, measurable decision instead of a bet.</span></div></div>
+        <div class="item"><div class="t">State outlives the process.<span>Every finished node is a persisted row, so a restart resumes at the last completed node. The same rows are what make <code style="font-family:var(--mono)">rewind</code>, <code style="font-family:var(--mono)">fork</code> and <code style="font-family:var(--mono)">replay</code> possible.</span></div></div>
+        <div class="item"><div class="t">A run can wait for a person at no cost.<span>A parked run holds no thread and spends no tokens. Approvals and <code style="font-family:var(--mono)">ask-human</code> are nodes, and the decision is a row someone writes later from the CLI, the RPC, or the monitor.</span></div></div>
+        <div class="item"><div class="t">Each node picks its own model and sandbox.<span>Roles are bound to engines in one file, so a cheap model can take the safe steps, and moving a role to a self-hosted endpoint is a one-line change you can measure against your eval suite.</span></div></div>
       </div>
-      <p class="callout" style="margin-top:1.6rem">Start absurdly small: <code style="font-family:var(--mono)">smithers oneshot "&lt;the thing you were going to babysit anyway&gt;"</code>. If you run it twice, make it a graph.</p>
+      <p class="callout" style="margin-top:1.6rem">Try it on something small: <code style="font-family:var(--mono)">smithers oneshot "&lt;a task you were going to supervise anyway&gt;"</code>. If you run it twice, write it as a workflow.</p>
       <p class="note" style="margin-top:.9rem">// smithers.sh · github.com/smithersai/smithers · <code style="color:var(--cyan)">smithers ask "..."</code> · questions?</p>
     </div>
   </section>
@@ -1123,6 +1304,10 @@
     <div class="slide-inner">
       <p class="eyebrow">Appendix · presenter runbook <span class="live">demo</span></p>
       <h2 class="headline">The two demos, timed.</h2>
+      <div class="pres-lock">
+        <p class="lead wide">Presenter mode is off, so the timings, pre-flight checks and offline fallbacks stay hidden — this slide is safe to leave up while the room can see the screen.</p>
+      </div>
+      <div class="pres-only">
       <div class="runbook">
         <div class="rb"><div class="clock">-10m</div><div class="what"><b>Before you start.</b> <code>smithers oneshot --status</code> must print usable agents. <code>smithers ps</code> must be reachable. Have a repo with <code>.smithers/</code> already seeded and one <em>real</em> small task picked out.</div></div>
         <div class="rb"><div class="clock">-2m</div><div class="what"><b>Pre-warm demo 1.</b> Launch the oneshot before the talk so there's a run with real output to show. Fresh runs are ten minutes of watching a spinner.</div></div>
@@ -1131,7 +1316,82 @@
         <div class="rb"><div class="clock">06:00</div><div class="what"><b>The crash test · slide 05.</b> If demo 1 is still running: <code>Ctrl-C</code> it, then <code>smithers up ... --resume true</code>. Ninety seconds, and it lands the whole durability argument better than the slide does.</div></div>
         <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
       </div>
-      <p class="note">// every command in this deck was checked against smithers 0.31.0 --help and the llms-full docs bundle.</p>
+      </div>
+      <p style="margin:1.4rem 0 0"><button class="pres-switch" id="presSwitch" type="button" aria-pressed="false">enable presenter mode</button></p>
+      <p class="note" style="margin-top:1rem">// toggle with <code style="color:var(--cyan)">P</code> · every command in this deck was checked against smithers 0.31.0 --help and the llms-full docs bundle.</p>
+    </div>
+  </section>
+
+  <!-- 24 · APPENDIX: THE THREE EXAMPLE REPOS -->
+  <section class="slide" id="s24">
+    <div class="slide-inner">
+      <p class="eyebrow cyan">Appendix · the example repos <span class="live">demo</span></p>
+      <h2 class="headline">Three sub-repos. One flow each.</h2>
+      <p class="lead" style="margin-bottom:1.6rem">Each one is small enough to read on this screen and produces work that genuinely needs the flow it shows. Full command order and speaker beats in each repo's <code style="font-family:var(--mono)">DEMO.md</code>.</p>
+      <div class="cols three">
+        <div class="card">
+          <span class="k">approval gates</span>
+          <h3>examples/pricing-api</h3>
+          <p>Nine files. A price change plus a migration, with two callers as the blast radius. The hero beat is the <em>deny</em>: the rejection note feeds the revise node and the second proposal is non-breaking.</p>
+          <span class="ex">smithers deny &lt;run&gt; --node gate --note "…"</span>
+          <span class="ex">smithers up … --run-id &lt;run&gt; --resume true</span>
+        </div>
+        <div class="card">
+          <span class="k">observability</span>
+          <h3>examples/flaky-monorepo</h3>
+          <p>Twelve packages, twelve defects, twelve parallel lanes. One lane is wall-clock flaky and retries; one has a real type error. Point at the trace waterfall and the token bill, not at prose.</p>
+          <span class="ex">smithers observability --detach</span>
+          <span class="ex">smithers scores &lt;run&gt; --node report</span>
+        </div>
+        <div class="card smith">
+          <span class="k">custom UI</span>
+          <h3>examples/todo-cli</h3>
+          <p>The agent drafts a spec, <em>you edit it in the browser</em>, and the edited markdown is what the implementer receives. One <code style="font-family:var(--mono)">.tsx</code> composed from shipped components.</p>
+          <span class="ex">smithers up …/spec-then-build.tsx -d</span>
+          <span class="ex">smithers ui &lt;run&gt;</span>
+        </div>
+      </div>
+      <p class="callout" style="margin-top:1.6rem">Pre-warm all three. Park the gate and the spec editor <em>before</em> you start talking.</p>
+      <p class="note" style="margin-top:.9rem">// every workflow here renders with <code style="color:var(--cyan)">smithers graph</code> against smithers 0.31.0.</p>
+    </div>
+  </section>
+
+  <!-- APPENDIX · EVALS & OPTIMISATION (last slide) -->
+  <section class="slide" id="s15">
+    <div class="slide-inner">
+      <p class="eyebrow">Appendix · evals &amp; optimisation</p>
+      <h2 class="headline">How to put a <span class="accent">number</span> on a workflow.</h2>
+      <p class="lead wide">Every run is already a labelled example — this prompt, this context, these tools, this outcome. Four steps turn that into a suite you can optimise against.</p>
+      <div class="steps" style="margin-top:1rem">
+        <div class="step">
+          <div class="n">STEP 1</div><div class="t">score a task</div>
+          <div class="d">Add a <code style="font-family:var(--mono)">scorers</code> prop to any <code style="font-family:var(--mono)">&lt;Task&gt;</code>. Five ship built in — schema adherence, latency, relevancy, toxicity, faithfulness — plus <code style="font-family:var(--mono)">llmJudge</code> for a rubric. They run after the task and never block it.</div>
+          <span class="cmd">type: "ratio", rate: 0.1</span>
+        </div>
+        <div class="step">
+          <div class="n">STEP 2</div><div class="t">write cases</div>
+          <div class="d">One JSON object per line: <code style="font-family:var(--mono)">id</code>, <code style="font-family:var(--mono)">input</code>, <code style="font-family:var(--mono)">expected</code>. Assertions are <code style="font-family:var(--mono)">status</code>, <code style="font-family:var(--mono)">output</code> for an exact match, and <code style="font-family:var(--mono)">outputContains</code> for a partial one.</div>
+          <span class="cmd">evals/smoke.jsonl</span>
+        </div>
+        <div class="step now">
+          <div class="n">STEP 3</div><div class="t">take a baseline</div>
+          <div class="d">Run the suite before you change anything. Reports land under <code style="font-family:var(--mono)">.smithers/evals/&lt;suite&gt;</code>; per-node scorer results come back from <code style="font-family:var(--mono)">scores</code>.</div>
+          <span class="cmd">smithers eval · smithers scores</span>
+        </div>
+        <div class="step smithy">
+          <div class="n">STEP 4</div><div class="t">optimise</div>
+          <div class="d">GEPA generates prompt patches and runs your suite twice — current prompts, then patched. The artifact is written only when the score improves by at least <code style="font-family:var(--mono)">--min-improvement</code>.</div>
+          <span class="cmd">smithers optimize --artifact ...</span>
+        </div>
+      </div>
+      <div class="code term" data-file="the whole loop, in order" style="margin-top:1.1rem">
+<pre><span class="ps">$</span> smithers eval wf.tsx --cases evals/smoke.jsonl --suite smoke        <span class="com"># baseline</span>
+<span class="ps">$</span> smithers optimize wf.tsx --cases evals/smoke.jsonl --suite smoke-gepa \
+    --artifact .smithers/optimizations/smoke-gepa.json                 <span class="com"># search</span>
+<span class="ps">$</span> smithers eval wf.tsx --cases evals/smoke.jsonl --suite smoke-opt \
+    --optimization .smithers/optimizations/smoke-gepa.json             <span class="com"># re-use</span></pre>
+      </div>
+      <p class="note">// the artifact patches agent-task prompts by <code style="color:var(--cyan)">nodeId</code> and nothing else — structure, output schemas, retries, approvals and persistence are untouched. honest caveat: field-wide eval-driven development for coding agents is still under-evidenced; a regression suite still beats a hunch.</p>
     </div>
   </section>
 
@@ -1150,12 +1410,53 @@
 
 <div class="progress" id="bar"></div>
 
-<div class="hint"><kbd>←</kbd> <kbd>→</kbd> navigate</div>
+<div class="hint"><kbd>←</kbd> <kbd>→</kbd> navigate · <kbd>p</kbd> presenter · <kbd>c</kbd> comment · <kbd>e</kbd> export</div>
 
 <nav class="nav" aria-label="Slide navigation">
+  <button class="cbtn" id="ctoggle" aria-label="Comment on this slide">comment<span class="badge" id="cbadge">0</span></button>
   <button id="prev" aria-label="Previous slide">‹</button>
   <button id="next" aria-label="Next slide">›</button>
 </nav>
+
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Slide comment">
+  <header>
+    <div>
+      <div class="who" id="dwho">comment · slide 01</div>
+      <div class="st" id="dst">—</div>
+    </div>
+    <button class="x" id="dclose" aria-label="Close comments">✕</button>
+  </header>
+  <div class="body">
+    <textarea id="dtext" spellcheck="true" placeholder="What should change on this slide?&#10;&#10;Be specific — this text goes straight to the agent.&#10;e.g. “cut the fourth card, it repeats slide 02”&#10;e.g. “this claim needs a source or it gets challenged”&#10;e.g. “headline is two ideas — split it”"></textarea>
+    <div class="hintline" id="dsaved">saved automatically · <kbd>esc</kbd> to close</div>
+  </div>
+  <footer>
+    <div class="rowb">
+      <button id="dprev">‹ prev</button>
+      <button id="dnext">next ›</button>
+    </div>
+    <div class="rowb">
+      <button id="dclear">clear slide</button>
+      <button id="dbuild" class="primary">build prompt</button>
+    </div>
+    <div class="meta" id="dmeta">0 slides commented</div>
+  </footer>
+</aside>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Refinement prompt">
+  <div class="modal-card">
+    <header>
+      <h3>Refinement prompt</h3>
+      <span class="sub" id="msub"></span>
+    </header>
+    <textarea id="mtext" readonly spellcheck="false"></textarea>
+    <footer>
+      <button id="mclearall">clear all</button>
+      <button id="mclose">close</button>
+      <button id="mcopy" class="primary">copy to clipboard</button>
+    </footer>
+  </div>
+</div>
 
 <script>
   (function () {
@@ -1177,13 +1478,32 @@
     const next = () => show(i + 1);
     const prev = () => show(i - 1);
 
+    // presenter mode: reveals the runbook appendix. off by default.
+    const deckNode = document.getElementById('deck');
+    const presBtn = document.getElementById('presSwitch');
+    function paintPres() {
+      const on = deckNode.classList.contains('presenting');
+      if (!presBtn) return;
+      presBtn.textContent = on ? 'presenter mode on — hide runbook' : 'enable presenter mode';
+      presBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    function togglePres() {
+      deckNode.classList.toggle('presenting');
+      paintPres();
+    }
+    if (presBtn) presBtn.addEventListener('click', togglePres);
+    paintPres();
+
     document.getElementById('next').addEventListener('click', next);
     document.getElementById('prev').addEventListener('click', prev);
 
     window.addEventListener('keydown', (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable)) return;
       switch (e.key) {
         case 'ArrowRight': case ' ': case 'PageDown': case 'l': case 'j': next(); e.preventDefault(); break;
         case 'ArrowLeft': case 'PageUp': case 'h': case 'k': prev(); e.preventDefault(); break;
+        case 'p': case 'P': togglePres(); e.preventDefault(); break;
         case 'Home': show(0); break;
         case 'End': show(total - 1); break;
       }
@@ -1325,5 +1645,196 @@
       }
       frame();
     }
+  })();
+</script>
+
+<script>
+  (function () {
+    const KEY = 'smithers-deck-comments:v1';
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const drawer = document.getElementById('drawer');
+    const modal = document.getElementById('modal');
+    const dtext = document.getElementById('dtext');
+    const dwho = document.getElementById('dwho');
+    const dst = document.getElementById('dst');
+    const dmeta = document.getElementById('dmeta');
+    const dsaved = document.getElementById('dsaved');
+    const badge = document.getElementById('cbadge');
+    const mtext = document.getElementById('mtext');
+    const msub = document.getElementById('msub');
+
+    let store = {};
+    try { store = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (err) { store = {}; }
+    const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (err) {} };
+
+    const activeIndex = () => {
+      const n = slides.findIndex((s) => s.classList.contains('active'));
+      return n < 0 ? 0 : n;
+    };
+
+    const clean = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+
+    function meta(idx) {
+      const s = slides[idx];
+      return {
+        id: s.id,
+        n: String(idx + 1).padStart(2, '0'),
+        eyebrow: clean(s.querySelector('.eyebrow')),
+        title: clean(s.querySelector('.headline, .hero-title, .big-quote')) || '(untitled)',
+      };
+    }
+
+    const commented = () => Object.keys(store).filter((k) => (store[k] || '').trim());
+
+    function paintBadge() {
+      const c = commented().length;
+      badge.textContent = String(c);
+      badge.classList.toggle('on', c > 0);
+      dmeta.textContent = c === 1 ? '1 slide commented' : c + ' slides commented';
+    }
+
+    function load() {
+      const m = meta(activeIndex());
+      dwho.textContent = 'comment · slide ' + m.n;
+      dst.textContent = m.title;
+      if (dtext.value !== (store[m.id] || '')) dtext.value = store[m.id] || '';
+      paintBadge();
+    }
+
+    let saveTimer = null;
+    dtext.addEventListener('input', () => {
+      const m = meta(activeIndex());
+      const v = dtext.value;
+      if (v.trim()) store[m.id] = v; else delete store[m.id];
+      persist();
+      paintBadge();
+      dsaved.textContent = 'saving…';
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => { dsaved.innerHTML = 'saved · <kbd>esc</kbd> to close'; }, 350);
+    });
+
+    const deckEl = document.getElementById('deck');
+    function openDrawer() {
+      drawer.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+      deckEl.classList.add('reviewing');
+      load();
+      setTimeout(() => dtext.focus(), 180);
+    }
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+      deckEl.classList.remove('reviewing');
+      dtext.blur();
+    }
+    const toggleDrawer = () => (drawer.classList.contains('open') ? closeDrawer() : openDrawer());
+
+    document.getElementById('ctoggle').addEventListener('click', toggleDrawer);
+    document.getElementById('dclose').addEventListener('click', closeDrawer);
+    document.getElementById('dprev').addEventListener('click', () => document.getElementById('prev').click());
+    document.getElementById('dnext').addEventListener('click', () => document.getElementById('next').click());
+    document.getElementById('dclear').addEventListener('click', () => {
+      delete store[meta(activeIndex()).id];
+      persist();
+      dtext.value = '';
+      paintBadge();
+      dtext.focus();
+    });
+
+    // follow slide changes while the drawer is open
+    const obs = new MutationObserver(() => { if (drawer.classList.contains('open')) load(); });
+    slides.forEach((s) => obs.observe(s, { attributes: true, attributeFilter: ['class'] }));
+
+    function buildPrompt() {
+      const entries = slides
+        .map((s, idx) => ({ m: meta(idx), c: (store[s.id] || '').trim() }))
+        .filter((e) => e.c);
+      if (!entries.length) return null;
+
+      const L = [];
+      L.push('Refine the slide deck at `smithers-deck-2026-08.html`.');
+      L.push('');
+      L.push('It is one self-contained HTML file. Each slide is a `<section class="slide" id="sN">`');
+      L.push('inside `<div class="deck">`. The visual language is a fixed set of existing classes');
+      L.push('(.eyebrow, .headline, .lead, .callout, .card, .note, .cols, .steps, .maptable, .code).');
+      L.push('Compose with those classes; add CSS only if a comment cannot be satisfied without it.');
+      L.push('');
+      L.push('## Review comments (' + entries.length + ' slide' + (entries.length === 1 ? '' : 's') + ' of ' + slides.length + ')');
+      entries.forEach((e) => {
+        L.push('');
+        L.push('### Slide ' + e.m.n + ' · #' + e.m.id + ' — ' + e.m.title);
+        if (e.m.eyebrow) L.push('_section label: ' + e.m.eyebrow + '_');
+        L.push('');
+        L.push(e.c.split('\n').map((line) => '> ' + line).join('\n'));
+      });
+      L.push('');
+      L.push('## Rules');
+      L.push('- Address every comment above. Where one is ambiguous, take the reading that makes the');
+      L.push('  slide shorter and more concrete, and say which reading you took.');
+      L.push('- Touch only the slides listed. Every other slide stays byte-identical.');
+      L.push('- Keep the file self-contained: no new dependencies, no external assets, no build step.');
+      L.push('- Keep slide ids and the slide count stable unless a comment explicitly asks otherwise.');
+      L.push('- If slide numbering moves, update the presenter runbook on #s23, which cites slide numbers.');
+      L.push('- Every factual claim you add must be verifiable. Do not invent figures, quotes, or sources.');
+      L.push('- Do not touch the review-mode UI (#drawer, #modal, .cbtn) or its script.');
+      L.push('- When done, open the deck in a browser and confirm all ' + slides.length + ' slides render and');
+      L.push('  arrow-key navigation still works.');
+      return L.join('\n');
+    }
+
+    function openModal() {
+      const p = buildPrompt();
+      if (!p) {
+        dsaved.textContent = 'no comments yet — write one first';
+        openDrawer();
+        return;
+      }
+      mtext.value = p;
+      msub.textContent = commented().length + ' slides · ' + p.length.toLocaleString() + ' chars';
+      modal.classList.add('open');
+      setTimeout(() => { mtext.focus(); mtext.setSelectionRange(0, 0); }, 60);
+    }
+    const closeModal = () => modal.classList.remove('open');
+
+    document.getElementById('dbuild').addEventListener('click', openModal);
+    document.getElementById('mclose').addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+    document.getElementById('mcopy').addEventListener('click', async () => {
+      const btn = document.getElementById('mcopy');
+      let ok = false;
+      try { await navigator.clipboard.writeText(mtext.value); ok = true; } catch (err) { ok = false; }
+      if (!ok) {
+        mtext.select();
+        try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      }
+      btn.textContent = ok ? 'copied ✓' : 'select all + ⌘C';
+      if (!ok) mtext.select();
+      setTimeout(() => { btn.textContent = 'copy to clipboard'; }, 1800);
+    });
+
+    document.getElementById('mclearall').addEventListener('click', () => {
+      if (!window.confirm('Delete every slide comment? This cannot be undone.')) return;
+      store = {};
+      persist();
+      dtext.value = '';
+      paintBadge();
+      closeModal();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      const t = e.target;
+      const typing = t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable);
+      if (e.key === 'Escape') {
+        if (modal.classList.contains('open')) closeModal();
+        else closeDrawer();
+        return;
+      }
+      if (typing) return;
+      if (e.key === 'c' || e.key === 'C') { toggleDrawer(); e.preventDefault(); }
+      if (e.key === 'e' || e.key === 'E') { openModal(); e.preventDefault(); }
+    });
+
+    paintBadge();
   })();
 </script>

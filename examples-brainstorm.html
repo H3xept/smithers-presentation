@@ -1,0 +1,355 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smithers demo examples — three sub-repos · brainstorm</title>
+<meta name="description" content="Three small sub-repos for the Smithers talk: a human approval gate, observability, and a custom workflow UI. Repo shapes, workflow graphs, demo beats, and build cost." />
+
+<style>
+  :root {
+    --ground:   #0B0E14;
+    --ground-2: #121826;
+    --ground-3: #19212F;
+    --line:     #232C3D;
+    --ink:      #E9ECF3;
+    --ink-dim:  #98A2B6;
+    --ink-faint:#5B6679;
+    --ember:    #FF8A4C;
+    --ember-2:  #FFB37E;
+    --cyan:     #62CBDA;
+    --smith:    #5B93FF;
+    --smith-2:  #9CBBFF;
+    --good:     #6FD08C;
+    --warn:     #E9C46A;
+    --bad:      #E06B6B;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --maxw: 1080px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: clamp(2rem,6vw,5rem) clamp(1.2rem,4vw,3rem) 8rem; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: .72rem; letter-spacing: .26em;
+    text-transform: uppercase; color: var(--ember); margin: 0 0 1.2rem;
+    display: flex; align-items: center; gap: .8rem;
+  }
+  .eyebrow::before { content:""; width:1.6rem; height:1px; background: currentColor; opacity:.8; }
+  .eyebrow.cyan { color: var(--cyan); }
+  .eyebrow.smith { color: var(--smith); }
+  .eyebrow.good { color: var(--good); }
+
+  h1 { font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.05; letter-spacing: -.02em; margin: 0 0 1rem; font-weight: 650; }
+  h2 { font-size: clamp(1.35rem,3vw,1.9rem); line-height: 1.15; letter-spacing: -.015em; margin: 0 0 .5rem; font-weight: 620; }
+  h3 { font-size: 1rem; margin: 2rem 0 .6rem; font-weight: 600; color: var(--ink); }
+  h4 { font-family: var(--mono); font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-faint); margin: 1.6rem 0 .5rem; font-weight: 600; }
+  p { margin: 0 0 1rem; color: var(--ink-dim); }
+  p.lead { font-size: 1.08rem; color: var(--ink); }
+  strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--smith-2); }
+  code { font-family: var(--mono); font-size: .86em; background: var(--ground-3); border: 1px solid var(--line); border-radius: 4px; padding: .08em .34em; color: var(--ember-2); }
+  pre { font-family: var(--mono); font-size: .8rem; line-height: 1.55; background: var(--ground-2); border: 1px solid var(--line); border-left: 2px solid var(--smith); border-radius: 6px; padding: 1rem 1.1rem; overflow-x: auto; color: var(--ink); margin: 0 0 1rem; }
+  pre code { background: none; border: 0; padding: 0; color: inherit; font-size: 1em; }
+  pre .c { color: var(--ink-faint); }
+  pre .k { color: var(--smith-2); }
+  pre .s { color: var(--good); }
+  pre .a { color: var(--ember-2); }
+
+  ul, ol { margin: 0 0 1rem; padding-left: 1.2rem; color: var(--ink-dim); }
+  li { margin: .3rem 0; }
+  li::marker { color: var(--ember); }
+
+  hr { border: 0; border-top: 1px solid var(--line); margin: 3.5rem 0; }
+
+  .card { background: var(--ground-2); border: 1px solid var(--line); border-radius: 10px; padding: clamp(1.2rem,3vw,2rem); margin: 0 0 1.4rem; }
+  .card.ember { border-left: 3px solid var(--ember); }
+  .card.cyan  { border-left: 3px solid var(--cyan); }
+  .card.smith { border-left: 3px solid var(--smith); }
+
+  .tag { display: inline-block; font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: var(--ground-3); color: var(--ink-dim); border-radius: 999px; padding: .22rem .6rem; margin: 0 .3rem .3rem 0; }
+  .tag.ember { color: var(--ember); border-color: rgba(255,138,76,.4); }
+  .tag.cyan { color: var(--cyan); border-color: rgba(98,203,218,.4); }
+  .tag.smith { color: var(--smith); border-color: rgba(91,147,255,.4); }
+  .tag.good { color: var(--good); border-color: rgba(111,208,140,.4); }
+  .tag.warn { color: var(--warn); border-color: rgba(233,196,106,.4); }
+
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 1.2rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 0 0 1.4rem; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-dim); }
+  th { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
+  td:first-child { color: var(--ink); font-weight: 550; white-space: nowrap; }
+
+  /* file tree */
+  .tree { font-family: var(--mono); font-size: .78rem; line-height: 1.7; color: var(--ink-dim); background: var(--ground-3); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.1rem; margin: 0 0 1rem; white-space: pre; overflow-x: auto; }
+  .tree b { color: var(--cyan); font-weight: 500; }
+  .tree i { color: var(--ink-faint); font-style: normal; }
+
+  /* pipeline diagram */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: .5rem; margin: 0 0 1.2rem; }
+  .node { flex: 1 1 120px; min-width: 110px; background: var(--ground-3); border: 1px solid var(--line); border-radius: 7px; padding: .6rem .7rem; font-size: .78rem; color: var(--ink); }
+  .node span { display: block; font-family: var(--mono); font-size: .6rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: .25rem; }
+  .node.gate { border-color: rgba(255,138,76,.55); background: rgba(255,138,76,.08); }
+  .node.gate span { color: var(--ember); }
+  .node.loop { border-color: rgba(233,196,106,.45); background: rgba(233,196,106,.07); }
+  .node.loop span { color: var(--warn); }
+  .node.ok { border-color: rgba(111,208,140,.45); background: rgba(111,208,140,.07); }
+  .node.ok span { color: var(--good); }
+  .arrow { align-self: center; color: var(--ink-faint); font-family: var(--mono); }
+
+  .beat { display: grid; grid-template-columns: 4.5rem 1fr; gap: .8rem; padding: .55rem 0; border-bottom: 1px solid var(--line); font-size: .9rem; color: var(--ink-dim); }
+  .beat b { font-family: var(--mono); font-size: .74rem; color: var(--ember); letter-spacing: .06em; }
+
+  .callout { border: 1px dashed var(--line); border-radius: 8px; padding: .9rem 1.1rem; margin: 0 0 1.2rem; font-size: .9rem; color: var(--ink-dim); background: rgba(91,147,255,.05); }
+  .callout b { color: var(--smith-2); }
+  .callout.warn { background: rgba(233,196,106,.05); }
+  .callout.warn b { color: var(--warn); }
+
+  .toc { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.5rem 0 0; }
+  .toc a { font-family: var(--mono); font-size: .74rem; text-decoration: none; color: var(--ink-dim); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .8rem; }
+  .toc a:hover { color: var(--ink); border-color: var(--ember); }
+  .num { font-family: var(--mono); color: var(--ink-faint); font-size: .8em; margin-right: .5rem; }
+  footer { color: var(--ink-faint); font-family: var(--mono); font-size: .74rem; border-top: 1px solid var(--line); padding-top: 1.4rem; margin-top: 3rem; }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">Brainstorm · Smithers talk · Aug 2026</p>
+  <h1>Three sub-repos, three flows.</h1>
+  <p class="lead">One demo repo per idea. Each sub-repo is small enough to read on a projector in ten seconds, and each one produces work that <em>genuinely needs</em> the flow it showcases. That second constraint is the whole design: an approval gate on a change nobody would care about teaches the audience that gates are ceremony.</p>
+
+  <div class="toc">
+    <a href="#a">01 · pricing-api → approval gates</a>
+    <a href="#b">02 · flaky-monorepo → observability</a>
+    <a href="#c">03 · todo-cli → custom UI</a>
+    <a href="#shared">shared conventions</a>
+    <a href="#rejected">what I rejected</a>
+  </div>
+
+  <div class="card" style="border-left:3px solid var(--good);margin-top:1.6rem">
+    <p class="eyebrow good" style="margin-bottom:.9rem">Status · all three built and verified</p>
+    <table style="margin-bottom:.6rem">
+      <tr><th>repo</th><th>workflow id</th><th>verified</th></tr>
+      <tr><td>examples/pricing-api</td><td><code>price-change</code></td><td><code>smithers graph</code> exit 0 · <code>bun test</code> 5 pass / 0 fail</td></tr>
+      <tr><td>examples/flaky-monorepo</td><td><code>harden-packages</code></td><td><code>smithers graph</code> exit 0, 12 lanes · fixture still 11–12 fail by design · <code>tsc</code> reports the one pkg-11 error</td></tr>
+      <tr><td>examples/todo-cli</td><td><code>spec-then-build</code></td><td><code>smithers graph</code> exit 0 · UI served and rendered live at <code>/workflows/spec-then-build</code> · <code>bun test</code> 6 pass / 0 fail</td></tr>
+    </table>
+    <p style="margin-bottom:0">No run was launched, so no model was called. Each repo carries its own <code>README.md</code>, <code>DEMO.md</code>, and seeded <code>.smithers/</code> pack. The deck gained an appendix slide pointing at all three.</p>
+  </div>
+
+  <hr />
+
+  <!-- ============================== 1 ============================== -->
+  <section id="a">
+    <p class="eyebrow ember">Example 01 · human approval gates</p>
+    <h2><span class="num">01</span>pricing-api — the gate that says no</h2>
+    <p>
+      <span class="tag ember">Approval</span><span class="tag ember">deny → revise loop</span>
+      <span class="tag">onDeny="continue"</span><span class="tag">blast radius</span><span class="tag good">13 files</span>
+    </p>
+
+    <p>A tiny billing service with a public price table and one SQL migration folder. The change request is deliberately a <strong>money-and-schema</strong> change, so the audience feels why a human stands in the middle of it.</p>
+
+    <div class="tree">examples/pricing-api/
+  <b>src/</b>
+    pricing.ts        <i># tiers + the one exported quote() function</i>
+    pricing.test.ts   <i># 5 tests, green</i>
+    routes.ts         <i># GET /quote, POST /subscribe</i>
+  <b>migrations/</b>
+    001_init.sql
+  <b>consumers/</b>
+    checkout.ts       <i># calls quote() — this is the blast radius</i>
+    reporting.ts      <i># calls quote() too</i>
+  prices.json         <i># the numbers a human must sign off on</i>
+  CHANGE-REQUEST.md   <i># the request the workflow reads</i>
+  package.json  ·  README.md  ·  DEMO.md
+  <b>.smithers/</b>workflows/price-change.tsx</div>
+
+    <h4>the flow</h4>
+    <div class="flow">
+      <div class="node"><span>task</span>read request + map callers</div><div class="arrow">→</div>
+      <div class="node"><span>task</span>draft code + migration</div><div class="arrow">→</div>
+      <div class="node gate"><span>approval</span>human: apply or reject</div><div class="arrow">→</div>
+      <div class="node loop"><span>on deny</span>revise with the reason</div><div class="arrow">↺</div>
+      <div class="node ok"><span>task</span>apply + <code>bun test</code></div>
+    </div>
+
+    <p><strong>The hero moment is the deny, not the approve.</strong> You reject with a written reason — "don't break <code>checkout.ts</code>, ship it behind a flag" — the workflow feeds that string back into the revise node, and the second proposal is non-breaking. That proves the gate is a typed <em>input</em> to the graph, not a checkbox in front of a script.</p>
+
+    <h4>demo beats (~2 min)</h4>
+    <div class="beat"><b>0:00</b> Show <code>prices.json</code> and the two consumers. Nine files, no explanation needed.</div>
+    <div class="beat"><b>0:20</b> Run is pre-warmed and already parked at the gate. <code>smithers why &lt;run&gt;</code> prints exactly what it is waiting for.</div>
+    <div class="beat"><b>0:40</b> Open <code>smithers monitor</code>. The approval panel shows the diff plus the agent's blast-radius note.</div>
+    <div class="beat"><b>1:10</b> <code>smithers deny &lt;run&gt; --node gate --note "…"</code>, then resume with <code>--run-id &lt;run&gt; --resume true</code>. Watch the revise node wake up.</div>
+    <div class="beat"><b>1:40</b> <code>smithers approve &lt;run&gt; --node gate</code>. Tests go green in the node output.</div>
+
+    <div class="callout"><b>Why this beats a generic gate demo:</b> the deny path is the only way to show that a human decision <em>changes the plan</em>. Everyone has seen a confirm dialog. Nobody has seen a plan re-derive itself from a rejection.</div>
+
+    <h4>bonus, if there is slack</h4>
+    <p>The second gate on the migration is already built, behind an optional input: launch with <code>--input '{"migrationGate":true}'</code> and the schema change needs its own decision. Kill the process while a gate is parked, then resume, and durability plus approval land in one beat — a parked gate is a persisted node, not a pinned process.</p>
+  </section>
+
+  <hr />
+
+  <!-- ============================== 2 ============================== -->
+  <section id="b">
+    <p class="eyebrow cyan">Example 02 · observability</p>
+    <h2><span class="num">02</span>flaky-monorepo — twelve spans and one liar</h2>
+    <p>
+      <span class="tag cyan">OTel traces</span><span class="tag cyan">token cost</span>
+      <span class="tag">retries</span><span class="tag">scorers</span><span class="tag">timeline</span><span class="tag good">12 tiny packages</span>
+    </p>
+
+    <p>Observability is boring on a three-node happy path. It gets convincing when there is <strong>width, failure, and cost</strong>. So: twelve trivial packages, each with one real defect, fanned out in parallel. Eleven or twelve of the twenty-two tests fail on a clean checkout, and the count moves between runs because one package races the clock.</p>
+
+    <div class="tree">examples/flaky-monorepo/
+  <b>packages/</b>
+    pkg-01 … pkg-12/    <i># each: index.ts + index.test.ts + package.json</i>
+      <i># one small pure function, one real defect, ~15 lines</i>
+      <i># pkg-07 is wall-clock flaky: 14 failures in 20 runs, measured</i>
+      <i># pkg-11 also has a real tsc error at index.ts(10,9)</i>
+  tsconfig.json  ·  package.json  ·  README.md  ·  DEMO.md
+  <b>.smithers/</b>workflows/harden-packages.tsx</div>
+
+    <h4>the flow</h4>
+    <div class="flow">
+      <div class="node"><span>task</span>enumerate packages</div><div class="arrow">→</div>
+      <div class="node"><span>parallel ×12</span>fix + test each package</div><div class="arrow">→</div>
+      <div class="node loop"><span>retry</span>failures re-run, bounded</div><div class="arrow">→</div>
+      <div class="node"><span>scorer</span>llmJudge + schemaAdherence</div><div class="arrow">→</div>
+      <div class="node ok"><span>task</span>roll-up report</div>
+    </div>
+
+    <h4>what the audience actually looks at</h4>
+    <ul>
+      <li><strong>Tempo waterfall.</strong> Twelve parallel spans, one visibly longer with a retry nested inside it. This single screenshot is the entire argument for tracing agents.</li>
+      <li><strong>Prometheus / Grafana.</strong> Tokens and dollars per node. Point at the one node that cost 4× the rest.</li>
+      <li><code>smithers scores &lt;run&gt;</code> — quality as a number, per node, not an impression.</li>
+      <li><code>smithers timeline &lt;run&gt;</code> — the fork tree, if you also demo a replay.</li>
+      <li><code>smithers what &lt;run&gt;</code> — the cheap narrated recap, as the "I do not want to read events" answer.</li>
+    </ul>
+
+    <div class="callout"><b>The comparison trick:</b> run the same workflow twice, once on a cheap model and once on a strong one, then put both runs on one Grafana dashboard. Cost down 6×, scorer average down 20% — now the audience is doing routing math in their heads instead of listening to you. Two pre-recorded runs, zero live risk.</div>
+
+    <h4>setup cost</h4>
+    <p><code>smithers observability --detach</code> brings up the Docker stack: Grafana on <code>:3001</code>, Prometheus on <code>:9090</code>, Tempo on <code>:3200</code>, Loki on <code>:3100</code>, and the OTLP HTTP intake on <code>:4318</code>. Launch the run with <code>OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318</code>. That stack is the one hard dependency in the whole set, so start it early and screenshot the dashboards. <code>graph</code>, <code>scores</code>, <code>timeline</code>, <code>inspect</code>, and <code>why</code> all read local state and need no Docker.</p>
+  </section>
+
+  <hr />
+
+  <!-- ============================== 3 ============================== -->
+  <section id="c">
+    <p class="eyebrow smith">Example 03 · custom workflow UI</p>
+    <h2><span class="num">03</span>todo-cli — the human edits the agent's artifact</h2>
+    <p>
+      <span class="tag smith">MarkdownEditor</span><span class="tag smith">Terminal</span>
+      <span class="tag">StageStrip</span><span class="tag">DiffHunks</span><span class="tag">ChatComposer</span><span class="tag good">~7 files</span>
+    </p>
+
+    <p>The CLI cannot show mid-run collaboration, which is exactly the gap a custom UI fills. So build the one interaction that is impossible anywhere else: the agent drafts a spec, <strong>the human edits the rendered document in the browser</strong>, and the edited text is what the implementation node receives.</p>
+
+    <div class="tree">examples/todo-cli/
+  <b>src/</b>
+    cli.ts            <i># add / list / done</i>
+    store.ts          <i># a JSON file, deliberately naive</i>
+    cli.test.ts       <i># 6 tests, green</i>
+  FEATURE-REQUEST.md  <i># due dates + recurrence, three open questions</i>
+  package.json  ·  README.md  ·  DEMO.md
+  <b>.smithers/</b>workflows/spec-then-build.tsx
+  <b>.smithers/</b>ui/spec-then-build.tsx
+  <b>.smithers/</b>ui/spec-then-build-contract.ts   <i># event name + correlation id, shared</i></div>
+
+    <h4>the flow</h4>
+    <div class="flow">
+      <div class="node"><span>task</span>read repo → draft spec.md</div><div class="arrow">→</div>
+      <div class="node gate"><span>ui</span>human edits the spec</div><div class="arrow">→</div>
+      <div class="node"><span>task</span>implement from edited spec</div><div class="arrow">→</div>
+      <div class="node ok"><span>task</span>run tests, stream output</div>
+    </div>
+
+    <h4>the UI as shipped, assembled from shipped components only</h4>
+    <table>
+      <tr><th>pane</th><th>component</th><th>why</th></tr>
+      <tr><td>page shell</td><td><code>WorkflowUiShell</code> + <code>ConnectionBadge</code></td><td>house styles and live connection state for free</td></tr>
+      <tr><td>top rail</td><td><code>NodeStageStrip</code></td><td>the four stages bound to live node status</td></tr>
+      <tr><td>header</td><td><code>KpiStat</code> ×3 · <code>LaunchButton</code> · <code>MonitorButton</code></td><td>elapsed · tokens · tests passing, plus launch and jump-to-Monitor</td></tr>
+      <tr><td>left, main</td><td><code>MarkdownEditor</code> + <code>MarkdownEditorStyles</code></td><td>WYSIWYG edit of the agent's spec — never a raw textarea</td></tr>
+      <tr><td>right, tab 1</td><td><code>DiffHunks</code></td><td>the implementation diff as it lands</td></tr>
+      <tr><td>right, tab 2</td><td><code>Terminal</code></td><td>live <code>bun test</code> output, real xterm, ANSI intact</td></tr>
+      <tr><td>right, tab 3</td><td><code>NodeChatStream</code></td><td>the selected agent node's live transcript</td></tr>
+      <tr><td>selection · empty</td><td><code>RunTree</code> · <code>RunList</code> · <code>EmptyState</code></td><td>pick a node, pick a run, and say so when there is neither</td></tr>
+    </table>
+
+    <p>Data comes from <code>createGatewayReactRoot</code> plus <code>useGatewayRun</code> / <code>useGatewayNodeOutput</code> / <code>useGatewayActions</code>. Submitting the edited spec is <code>submitSignal</code> then <code>resumeRun</code>: a signal alone does not wake a parked run, and it must carry <code>signalName</code> as well as <code>correlationKey</code> or no waiter ever matches. The workflow and the UI import both strings from one shared contract file so they cannot drift.</p>
+
+    <p>The shipped grader, <code>gradeWorkflowUiSource</code>, scores this bundle 1.0 with zero violations. No hand-rolled pills, tables, or colors.</p>
+
+    <h4>demo beats (~2 min)</h4>
+    <div class="beat"><b>0:00</b> <code>smithers ui &lt;run&gt;</code>. The spec is already drafted and waiting.</div>
+    <div class="beat"><b>0:15</b> Edit one line of the spec live — change "due dates" to "due dates in UTC only". Submit.</div>
+    <div class="beat"><b>0:45</b> Implementation node wakes. Diff tab fills in. Terminal tab streams the test run.</div>
+    <div class="beat"><b>1:30</b> Point at the KpiStats. Close on: this whole surface is one <code>.tsx</code> file.</div>
+
+    <div class="callout"><b>Why the spec editor and not a dashboard:</b> a dashboard shows you a run. An editor makes you part of it. The moment your typed sentence provably steers the next agent, the "durable control plane" claim stops being a slogan.</div>
+  </section>
+
+  <hr />
+
+  <!-- ============================== shared ============================== -->
+  <section id="shared">
+    <p class="eyebrow good">Shared conventions</p>
+    <h2>Make all three interchangeable</h2>
+
+    <div class="grid2">
+      <div class="card smith">
+        <h3>One layout, three times</h3>
+        <p>Every sub-repo: <code>README.md</code> (5 lines max), a real <code>bun test</code> that passes on a clean checkout, and its own <code>.smithers/</code>. No shared root package — each one is independently clonable, because "copy this folder" is the takeaway you want.</p>
+      </div>
+      <div class="card cyan">
+        <h3>Pre-warm everything</h3>
+        <p>A fresh run is ten minutes of spinner. Before the talk, launch all three, then park #1 at its gate and park #3 at its spec editor. Demos start on a run that already has real output.</p>
+      </div>
+      <div class="card ember">
+        <h3>Offline fallback per example</h3>
+        <p><code>graph</code>, <code>timeline</code>, <code>inspect</code>, <code>why</code>, and <code>scores</code> read local state. For #2, screenshot Grafana before the talk and keep the images next to the deck.</p>
+      </div>
+      <div class="card">
+        <h3>Each has a DEMO.md</h3>
+        <p>Repo → flow → exact commands in order → the one sentence to say. So the talk is reproducible by someone who is not you, and so you can hand the repos out afterwards.</p>
+      </div>
+    </div>
+
+    <h4>the three-line pitch, one per example</h4>
+    <table>
+      <tr><th>repo</th><th>shows</th><th>the line</th></tr>
+      <tr><td>pricing-api</td><td>approval gates</td><td>"A rejection is an input, not an abort."</td></tr>
+      <tr><td>flaky-monorepo</td><td>observability</td><td>"Twelve agents, one trace, one bill."</td></tr>
+      <tr><td>todo-cli</td><td>custom UI</td><td>"You edit the agent's plan while it waits."</td></tr>
+    </table>
+  </section>
+
+  <hr />
+
+  <!-- ============================== rejected ============================== -->
+  <section id="rejected">
+    <p class="eyebrow">Considered and cut</p>
+    <h2>What I rejected, and why</h2>
+    <table>
+      <tr><th>idea</th><th>verdict</th></tr>
+      <tr><td>Destructive-script runbook<br /><span style="font-weight:400;color:var(--ink-faint)">gate before <code>drop-stale-tenants.ts</code></span></td><td>Visceral, but the gate is the <em>only</em> content. No deny→revise path, so it teaches "confirm dialog". Good as a 20-second aside inside #1.</td></tr>
+      <tr><td>Dependency-bump demo</td><td>Realistic and dull. The approval has no stakes an audience can feel in ten seconds.</td></tr>
+      <tr><td>Alert-suppressor for observability</td><td>Needs fake alert history to be credible. Setup cost exceeds the payoff versus a parallel fan-out you can literally point at.</td></tr>
+      <tr><td>Kanban board UI</td><td>Beautiful, but it is a <em>viewer</em>. Loses to the spec editor, because nothing the human does changes the run.</td></tr>
+      <tr><td>One repo, three workflows</td><td>Tempting for maintenance. Rejected: three separate folders make "copy the closest example" the obvious next action for the audience.</td></tr>
+    </table>
+
+    <div class="callout warn"><b>The one risk to watch:</b> all three examples want a real coding agent doing real work, so all three are non-deterministic on stage. Mitigation is the same each time — pre-warm, park at the interesting node, and keep the recorded run as the fallback. Never let the first live agent turn of the talk be the thing the point depends on.</div>
+  </section>
+
+  <footer>brainstorm · sibling to smithers-deck-2026-08.html · components and commands cross-checked against the smithers skill reference</footer>
+</div>

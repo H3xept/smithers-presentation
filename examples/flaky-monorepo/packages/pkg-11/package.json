@@ -1,0 +1,7 @@
+{
+  "name": "pkg-11",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "formatBytes: one small pure function with one real defect."
+}

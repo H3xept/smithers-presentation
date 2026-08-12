@@ -1,0 +1,7 @@
+{
+  "name": "pkg-02",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "clamp: one small pure function with one real defect."
+}

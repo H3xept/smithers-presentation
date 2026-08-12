@@ -1,0 +1,7 @@
+{
+  "name": "pkg-06",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "description": "uniqueBy: one small pure function with one real defect."
+}
