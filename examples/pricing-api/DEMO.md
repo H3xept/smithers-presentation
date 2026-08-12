@@ -35,7 +35,7 @@ smithers why <run-id>
 > the exact gate it waits for."
 
 ```bash
-smithers deny <run-id> --node gate --by leo --note "Mid-cycle accounts must keep the old price until renewal."
+smithers deny <run-id> --node gate --iteration 0 --by leo --note "Do not grandfather. Mid-cycle accounts must be re-priced pro-rata from the effective date, and the invoice must show both rates."
 ```
 > "I reject it. The gate uses `onDeny=continue`, so my rejection and my note are
 > written to the database as a decision row. The rejection is data, not a crash."
@@ -54,8 +54,12 @@ smithers approve <run-id> --node gate --by leo --note "Mid-cycle rule accepted."
 smithers up .smithers/workflows/price-change.tsx --run-id <run-id> --resume true
 ```
 > "Now I approve. Only now does `apply` run: it writes `src/pricing.ts`,
-> `prices.json`, and a new `migrations/002_*.sql`, then runs `bun test` and reports
-> the counts. Both consumer files still work."
+> `prices.json`, `src/pricing.test.ts`, and a new `migrations/002_*.sql`, then runs
+> `bun test` until it is green. Both consumer files still work, untouched."
+
+Verified end state: `bun test src` reports **10 pass / 0 fail**. `apply` updates the
+stale price assertions in `src/pricing.test.ts` and adds tests for the new
+prorated segments; it is instructed never to weaken a test to get there.
 
 ```bash
 smithers timeline <run-id>
