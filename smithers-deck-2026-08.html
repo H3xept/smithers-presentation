@@ -1156,6 +1156,44 @@
     </div>
   </section>
 
+  <!-- 15a2 · A WORKING LENS: PLANNING FLOWS -->
+  <section class="slide" id="s28">
+    <div class="slide-inner">
+      <p class="eyebrow">Part 4 · a working lens · plan → review → implement</p>
+      <h2 class="headline">The <span class="accent">planning</span> half is where the human belongs.<br />It's also where the tooling wasn't.</h2>
+      <div class="versus">
+        <div class="left">
+          <div class="vhead">how I run planning flows today</div>
+          <ul>
+            <li>the agent writes a <code style="font-family:var(--mono)">plan.md</code>; I interrogate it over dozens of chat turns</li>
+            <li>corrections live scattered across the transcript, not in the plan</li>
+            <li>no surface to actually <em>reason</em> over the document — I diff it in my head</li>
+            <li>half the corrections land; the plan the agent builds from is not the one I approved</li>
+          </ul>
+        </div>
+        <div class="right">
+          <div class="vhead">plan as a parked node + its own UI</div>
+          <ul>
+            <li><strong>draft-spec</strong> writes the plan; the run <strong>parks</strong> on <code style="font-family:var(--mono)">WaitForEvent</code> — the human step is a node, not a chat</li>
+            <li>I edit the spec in the workflow's <strong>own UI</strong> — a real Markdown editor over the drafted row, diff and tests beside it</li>
+            <li><strong>the text I submit is the implementer's input</strong> — the edge reads the wait node's row, never the draft</li>
+            <li>two rows prove it after the fact: the agent's document, and mine. The code matches mine.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="loopflow" style="margin-top:1rem">
+        <span class="fbox">the workflow's web page</span>
+        <span class="fbox">a Slack / Telegram bot</span>
+        <span class="fbox">smithers approve · CLI</span>
+        <span class="fbox">the monitor's banner</span>
+        <span class="ar">⇄</span>
+        <span class="fbox hi">one DB of rows — frames, outputs, pending decisions</span>
+      </div>
+      <p class="callout" style="margin-top:1rem">That split is the mental model: <strong>the substrate is fixed, the surface is yours.</strong> A run is rows in a DB; a pending gate is a persisted decision row, and anything that reaches the Gateway can render and clear it. There is no one-size-fits-all review surface — a planning flow needs a spec editor, a merge flow needs a diff queue — so each workflow ships its own, in one <code style="font-family:var(--mono)">.tsx</code> next to the graph.</p>
+      <p class="note">// the whole loop is <code style="color:var(--cyan)">examples/todo-cli</code> — the spec-then-build run on the next slide is this workflow, read back from its rows.</p>
+    </div>
+  </section>
+
   <!-- 15b · A COMPLETED RUN, READ BACK -->
   <section class="slide" id="s26">
     <div class="slide-inner">
@@ -1395,7 +1433,7 @@ run-1786513356304
         <div class="rb"><div class="clock">03:30</div><div class="what"><b>Live 1 · slide 08 · oneshot.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
         <div class="rb"><div class="clock">05:00</div><div class="what"><b>Live 2 · slide 10 · the graph.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> renders the whole graph in a second without calling a model — the most convincing second in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
         <div class="rb"><div class="clock">06:30</div><div class="what"><b>Live 3 · slide 14 · the gate.</b> The parked <code>pricing-api</code> run. <code>smithers why &lt;run&gt;</code> names the blocker, then <code>smithers deny … --note "…"</code> and watch the revise node wake. This is the best argument in the talk.</div></div>
-        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 16 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 26 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
+        <div class="rb"><div class="clock">optional</div><div class="what"><b>Slide 16 · the custom UI</b> — <code>examples/todo-cli</code>, parked at the spec editor: edit the markdown in the browser and the implementer node receives your text. <b>Slide 27 · <code>flaky-monorepo</code></b> — keep for Q&amp;A, and only if someone asks about cost or observability.</div></div>
         <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
       </div>
       </div>
@@ -1583,7 +1621,7 @@ run-1786513356304
       s3: 'part 2 · what it is', s4: 'part 2 · what it is', s5: 'part 2 · property 1/4',
       s6: 'part 3 · using it', s7: 'part 3 · using it', s8: 'part 3 · using it',
       s9: 'part 3 · using it', s10: 'part 3 · using it', s11: 'part 3 · using it', s12: 'part 3 · using it',
-      s13: 'part 4 · property 2/4', s14: 'part 4 · property 3/4', s25: 'part 4 · surfaces', s26: 'part 4 · read-back', s16: 'part 4 · property 4/4',
+      s13: 'part 4 · property 2/4', s14: 'part 4 · property 3/4', s25: 'part 4 · surfaces', s28: 'part 4 · a working lens', s26: 'part 4 · read-back', s16: 'part 4 · property 4/4',
       s17: 'part 5 · cost', s18: 'part 5 · cost', s19: 'part 5 · cost',
       s20: 'part 5 · cost', s21: 'part 5 · cost',
       s22: 'summary',
