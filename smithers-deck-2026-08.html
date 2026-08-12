@@ -1,0 +1,1329 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smithers — Durable Graphs for Long-Running Agents · August 2026</title>
+<meta name="description" content="A 10-minute demo talk on Smithers: a durable control plane for long-running coding agents. What it is, the three routes into it, a live demo, the benefits that only show up at scale — and why good decomposition is the road to self-hosted models." />
+
+<style>
+  :root {
+    --ground:   #0B0E14;
+    --ground-2: #121826;
+    --ground-3: #19212F;
+    --line:     #232C3D;
+    --ink:      #E9ECF3;
+    --ink-dim:  #98A2B6;
+    --ink-faint:#5B6679;
+    --ember:    #FF8A4C;
+    --ember-2:  #FFB37E;
+    --ember-deep:#C45A22;
+    --cyan:     #62CBDA;
+    --smith:    #5B93FF;
+    --smith-2:  #9CBBFF;
+    --good:     #6FD08C;
+    --warn:     #E9C46A;
+    --bad:      #E06B6B;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --pad: clamp(2rem, 5vw, 6.5rem);
+    --maxw: 1180px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .deck { position: fixed; inset: 0; }
+
+  /* ---------- slides ---------- */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(3rem, 7vh, 5rem) var(--pad);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(14px);
+    transition: opacity .5s ease, transform .5s ease;
+    overflow-y: auto;
+  }
+  .slide.active {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  .slide-inner { width: 100%; max-width: var(--maxw); margin: 0 auto; }
+
+  /* ---------- shared type ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: clamp(.66rem, 1vw, .78rem);
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--ember);
+    margin: 0 0 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    flex-wrap: wrap;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 1.6rem; height: 1px;
+    background: var(--ember);
+    opacity: .8;
+  }
+  .eyebrow.cyan { color: var(--cyan); }
+  .eyebrow.cyan::before { background: var(--cyan); }
+  .eyebrow.smith { color: var(--smith); }
+  .eyebrow.smith::before { background: var(--smith); }
+  .roadmap {
+    font-family: var(--mono);
+    font-size: .58rem;
+    font-weight: 600;
+    letter-spacing: .2em;
+    color: var(--warn);
+    border: 1px dashed var(--warn);
+    border-radius: 999px;
+    padding: .2rem .65rem;
+    white-space: nowrap;
+  }
+  .live {
+    font-family: var(--mono);
+    font-size: .58rem;
+    font-weight: 700;
+    letter-spacing: .22em;
+    color: var(--ground);
+    background: var(--bad);
+    border-radius: 999px;
+    padding: .24rem .7rem;
+    white-space: nowrap;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .55 } }
+
+  h1.headline {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(2.2rem, 6vw, 4.6rem);
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    margin: 0 0 1.4rem;
+    text-wrap: balance;
+  }
+  h2.headline {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(1.7rem, 4vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -.015em;
+    margin: 0 0 1.5rem;
+    text-wrap: balance;
+  }
+  .accent { color: var(--ember); }
+  .accent-cyan { color: var(--cyan); }
+  .accent-smith { color: var(--smith); }
+
+  .lead {
+    font-size: clamp(1.05rem, 1.7vw, 1.45rem);
+    line-height: 1.5;
+    color: var(--ink-dim);
+    max-width: 46ch;
+    margin: 0 0 1rem;
+    text-wrap: pretty;
+  }
+  .lead strong { color: var(--ink); font-weight: 600; }
+  .lead.wide { max-width: 62ch; }
+
+  .note {
+    font-family: var(--mono);
+    font-size: .8rem;
+    color: var(--ink-faint);
+    letter-spacing: .02em;
+    margin-top: 1.6rem;
+  }
+
+  /* ---------- hero ---------- */
+  #s1 { justify-content: center; }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.25fr .75fr;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+  }
+  @media (max-width: 820px) { .hero-grid { grid-template-columns: 1fr; } }
+  .hero-title {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: clamp(2.6rem, 8vw, 5.8rem);
+    line-height: .96;
+    letter-spacing: -.03em;
+    margin: 0;
+  }
+  .hero-title .l2 { color: var(--smith); animation: caret 1.1s step-end infinite; }
+  @keyframes caret { 0%, 49% { opacity: 1 } 50%, 100% { opacity: .15 } }
+  .hero-sub {
+    font-size: clamp(1.1rem, 2vw, 1.6rem);
+    color: var(--ink-dim);
+    margin: 1.6rem 0 0;
+    max-width: 32ch;
+    line-height: 1.4;
+  }
+  .hero-meta {
+    font-family: var(--mono);
+    font-size: .78rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2.4rem;
+  }
+  .hero-frame {
+    display: flex;
+    align-items: center;
+    gap: .9rem 1.1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+  .part-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-family: var(--mono);
+    font-size: .66rem;
+    font-weight: 600;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--smith);
+    border: 1px solid var(--smith);
+    background: linear-gradient(180deg, rgba(91,147,255,.14), rgba(91,147,255,.02));
+    border-radius: 999px;
+    padding: .32rem .85rem;
+    white-space: nowrap;
+  }
+  .part-badge b { color: var(--ink); font-weight: 600; }
+  .hero-part-note {
+    font-size: .85rem;
+    color: var(--ink-faint);
+    line-height: 1.5;
+    max-width: 42ch;
+    margin: 1.4rem 0 0;
+  }
+  .hero-part-note b { color: var(--ink-dim); font-weight: 600; }
+  .canvas-wrap {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    max-width: 380px;
+    margin-left: auto;
+  }
+  #graphCanvas { width: 100%; height: 100%; display: block; }
+
+  /* ---------- statement slides ---------- */
+  .statement h2 { font-size: clamp(2rem, 5.5vw, 4rem); max-width: 18ch; }
+  .big-quote {
+    font-family: var(--mono);
+    font-size: clamp(1.8rem, 5vw, 3.6rem);
+    line-height: 1.12;
+    letter-spacing: -.02em;
+    max-width: 20ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  /* ---------- columns / cards ---------- */
+  .cols { display: grid; gap: 1.5rem 2.4rem; }
+  .cols.two { grid-template-columns: 1fr 1fr; }
+  .cols.three { grid-template-columns: repeat(3, 1fr); }
+  .cols.four { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 760px) { .cols.two, .cols.three, .cols.four { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.3rem 1.4rem;
+  }
+  .card h3 {
+    font-family: var(--mono);
+    font-size: .95rem;
+    letter-spacing: .01em;
+    margin: 0 0 .5rem;
+    color: var(--ink);
+  }
+  .card p { margin: 0; color: var(--ink-dim); font-size: .92rem; line-height: 1.45; }
+  .card .k {
+    font-family: var(--mono);
+    font-size: .72rem;
+    color: var(--ember);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: .7rem;
+  }
+  .card.smith { border-color: var(--smith); background: linear-gradient(180deg, rgba(91,147,255,.10), rgba(91,147,255,.02)); }
+  .card.smith .k { color: var(--smith); }
+  .card .ex { display:block; font-family:var(--mono); font-size:.72rem; color:var(--cyan); margin-top:.75rem; background:var(--ground-3); border:1px solid var(--line); border-radius:3px; padding:.45rem .55rem; overflow-x:auto; white-space:nowrap; }
+
+  /* bullet list */
+  ul.list { list-style: none; padding: 0; margin: 0; display: grid; gap: .85rem; }
+  ul.list li {
+    position: relative;
+    padding-left: 1.7rem;
+    font-size: clamp(1rem, 1.5vw, 1.2rem);
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  ul.list li::before {
+    content: "▸";
+    position: absolute; left: 0; top: 0;
+    color: var(--ember);
+    font-family: var(--mono);
+  }
+  ul.list li span { color: var(--ink-dim); }
+  ul.list.tight li { font-size: clamp(.92rem, 1.3vw, 1.05rem); }
+  ul.list.smith li::before { color: var(--smith); }
+
+  .callout {
+    margin-top: 1.8rem;
+    border-left: 2px solid var(--ember);
+    padding: .3rem 0 .3rem 1.2rem;
+    font-family: var(--mono);
+    font-size: clamp(.95rem, 1.5vw, 1.15rem);
+    line-height: 1.4;
+    color: var(--ember-2);
+  }
+  .callout.smith { border-color: var(--smith); color: var(--smith-2); }
+
+  /* ---------- steps / tiers ---------- */
+  .steps { display: flex; align-items: stretch; gap: .6rem; flex-wrap: wrap; }
+  .step {
+    flex: 1 1 0;
+    min-width: 140px;
+    background: var(--ground-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1.1rem 1.1rem 1.3rem;
+    position: relative;
+  }
+  .step .n { font-family: var(--mono); color: var(--ink-faint); font-size: .72rem; letter-spacing:.18em; }
+  .step .t { font-family: var(--mono); font-size: 1.05rem; margin-top: .5rem; color: var(--ink); }
+  .step .d { color: var(--ink-dim); font-size: .82rem; margin-top: .35rem; line-height:1.35; }
+  .step .cmd { font-family: var(--mono); font-size: .7rem; color: var(--cyan); margin-top: .7rem; display:block; white-space:nowrap; overflow-x:auto; }
+  .step.now { border-color: var(--ember); background: linear-gradient(180deg, rgba(255,138,76,.10), rgba(255,138,76,.02)); }
+  .step.now .t { color: var(--ember); }
+  .step.smithy { border-color: var(--smith); background: linear-gradient(180deg, rgba(91,147,255,.10), rgba(91,147,255,.02)); }
+  .step.smithy .t { color: var(--smith); }
+
+  /* ---------- render loop strip ---------- */
+  .loopflow { display:flex; align-items:center; gap:.55rem; flex-wrap:wrap; margin:1.4rem 0 0; }
+  .loopflow .fbox { font-family:var(--mono); font-size:clamp(.72rem,1.1vw,.88rem); border:1px solid var(--line); background:var(--ground-2); border-radius:4px; padding:.7rem .95rem; color:var(--ink); }
+  .loopflow .fbox.hi { border-color:var(--smith); color:var(--smith); background:linear-gradient(180deg, rgba(91,147,255,.12), rgba(91,147,255,.02)); }
+  .loopflow .fbox.ok { border-color:var(--good); color:var(--good); }
+  .loopflow .ar { color:var(--ink-faint); font-family:var(--mono); font-size:.9rem; }
+  .loopflow .ar.back { color:var(--ember); }
+
+  /* ---------- mapping table ---------- */
+  .maptable { width: 100%; border-collapse: collapse; font-size: clamp(.82rem, 1.25vw, .98rem); }
+  .maptable th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 1rem .8rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .maptable td { padding: .7rem 1rem .7rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .maptable tr td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+  .maptable code { font-family: var(--mono); color: var(--cyan); font-size: .88em; }
+  .maptable td:last-child { color: var(--ink-dim); }
+  .maptable.compact td { padding: .5rem 1rem .5rem 0; }
+
+  /* dense slides */
+  #s11 h2.headline, #s16 h2.headline { font-size: clamp(1.4rem, 2.7vw, 1.95rem); margin-bottom: .9rem; }
+  #s11 .eyebrow, #s16 .eyebrow { margin-bottom: .9rem; }
+  #s11 .code, #s16 .code { font-size: clamp(.6rem, .92vw, .78rem); line-height: 1.4; padding: .85rem 1.1rem; }
+  #s11 .note, #s16 .note { margin-top: .9rem; }
+
+  /* ---------- code ---------- */
+  .code {
+    background: var(--ground-3);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1.1rem 1.3rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: clamp(.68rem, 1.05vw, .86rem);
+    line-height: 1.55;
+    tab-size: 2;
+  }
+  .code::before {
+    content: attr(data-file);
+    display: block;
+    color: var(--ink-faint);
+    font-size: .72rem;
+    letter-spacing: .1em;
+    margin-bottom: .9rem;
+    text-transform: lowercase;
+  }
+  .code pre { margin: 0; white-space: pre; }
+  .code.term { border-color: var(--ember-deep); }
+  .code.term::before { color: var(--ember); }
+  .kw  { color: var(--ember); }
+  .fn  { color: var(--cyan); }
+  .str { color: var(--good); }
+  .com { color: var(--ink-faint); font-style: italic; }
+  .pn  { color: var(--ink-dim); }
+  .tag { color: var(--smith); }
+  .at  { color: var(--warn); }
+  .hl  { color: var(--ember-2); }
+  .ps  { color: var(--ember); }
+
+  /* ---------- seam diagram ---------- */
+  .seam { display: grid; gap: 0; max-width: 760px; }
+  .seam-band { border: 1px solid var(--line); border-radius: 4px; padding: 1rem 1.2rem; background: var(--ground-2); }
+  .seam-band .k { font-family: var(--mono); font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-faint); }
+  .seam-band .v { font-family: var(--mono); font-size: clamp(.9rem,1.4vw,1.1rem); margin-top: .35rem; color: var(--ink); }
+  .seam-line {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: .8rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--ground);
+    background: var(--smith);
+    padding: .5rem;
+    margin: .55rem 0;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+  .seam-band.below { background: var(--ground-3); }
+  .seam-band.below .v { color: var(--cyan); }
+
+  /* engine chips */
+  .chips { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.4rem; }
+  .chips span {
+    font-family: var(--mono); font-size:.78rem; color: var(--ink-dim);
+    border:1px solid var(--line); background: var(--ground-2);
+    border-radius:4px; padding:.32rem .7rem;
+  }
+  .chips span.on { color: var(--ground); background: var(--smith); border-color: var(--smith); font-weight:600; }
+  .chips span.local { color: var(--ground); background: var(--good); border-color: var(--good); font-weight:600; }
+
+  /* ---------- big number ---------- */
+  .furnace { display:grid; grid-template-columns: 1fr 1fr; gap: clamp(1.5rem,4vw,3rem); align-items:center; }
+  @media (max-width:760px){ .furnace{ grid-template-columns:1fr; } }
+  .bignum { font-family: var(--mono); font-size: clamp(3rem, 11vw, 8rem); line-height:.9; color: var(--ember); letter-spacing:-.03em; }
+  .bignum small { display:block; font-size: clamp(.9rem,1.6vw,1.2rem); color: var(--ink-dim); letter-spacing: .04em; margin-top:1rem; }
+
+  /* ---------- closing ---------- */
+  .stick { display:grid; gap: 1rem; counter-reset: stick; }
+  .stick .item { display:flex; gap:1.2rem; align-items:baseline; border-bottom:1px solid var(--line); padding-bottom:1rem; }
+  .stick .item::before {
+    counter-increment: stick;
+    content: counter(stick);
+    font-family: var(--mono);
+    color: var(--ember);
+    font-size: 1.4rem;
+    min-width: 1.4rem;
+  }
+  .stick .item .t { font-family: var(--mono); font-size: clamp(1.05rem,2vw,1.5rem); color: var(--ink); }
+  .stick .item .t span { display:block; font-family: var(--sans); font-size: .9rem; color: var(--ink-dim); margin-top:.3rem; }
+
+  /* ---------- timeline / time-travel strip ---------- */
+  .frames { display:flex; gap:.4rem; align-items:stretch; flex-wrap:wrap; margin-top:.4rem; }
+  .frame-box { flex:1 1 0; min-width:96px; border:1px solid var(--line); background:var(--ground-2); border-radius:4px; padding:.7rem .6rem; text-align:center; font-family:var(--mono); }
+  .frame-box .fn2 { font-size:.62rem; letter-spacing:.16em; color:var(--ink-faint); text-transform:uppercase; }
+  .frame-box .fv { font-size:.86rem; color:var(--ink); margin-top:.3rem; }
+  .frame-box.done { border-color:var(--good); }
+  .frame-box.done .fv { color:var(--good); }
+  .frame-box.here { border-color:var(--ember); background:linear-gradient(180deg, rgba(255,138,76,.12), rgba(255,138,76,.02)); }
+  .frame-box.here .fv { color:var(--ember); }
+  .frame-box.ghost { border-style:dashed; opacity:.6; }
+
+  /* ---------- versus table ---------- */
+  .versus { display:grid; grid-template-columns: 1fr 1fr; gap:0; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  @media (max-width:760px){ .versus{ grid-template-columns:1fr; } }
+  .versus > div { padding:1.1rem 1.3rem; }
+  .versus .vhead { font-family:var(--mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; padding:.75rem 1.3rem; border-bottom:1px solid var(--line); }
+  .versus .left  { background:var(--ground-2); border-right:1px solid var(--line); }
+  .versus .right { background:linear-gradient(180deg, rgba(91,147,255,.08), rgba(91,147,255,.01)); }
+  .versus .left .vhead  { color:var(--ink-faint); }
+  .versus .right .vhead { color:var(--smith); }
+  .versus ul { list-style:none; margin:0; padding:0; display:grid; gap:.7rem; }
+  .versus li { font-size:.94rem; line-height:1.4; padding-left:1.3rem; position:relative; }
+  .versus .left li  { color:var(--ink-faint); }
+  .versus .left li::before  { content:"✕"; position:absolute; left:0; color:var(--bad); font-family:var(--mono); font-size:.8rem; }
+  .versus .right li { color:var(--ink-dim); }
+  .versus .right li strong { color:var(--ink); font-weight:600; }
+  .versus .right li::before { content:"▸"; position:absolute; left:0; color:var(--smith); font-family:var(--mono); }
+
+  /* ---------- economics chart ---------- */
+  .econ { display:grid; grid-template-columns: 1.2fr .8fr; gap: clamp(1.4rem,4vw,2.6rem); align-items:center; margin-top:.6rem; }
+  @media (max-width:860px){ .econ{ grid-template-columns:1fr; } }
+  .econ-chart { width:100%; height:auto; display:block; border:1px solid var(--line); border-radius:6px; background:var(--ground-2); }
+  .econ-legend { display:grid; gap:.65rem; }
+  .econ-legend .row { display:flex; align-items:baseline; gap:.6rem; font-size:.86rem; color:var(--ink-dim); line-height:1.35; }
+  .econ-legend i { width:1.5rem; height:0; border-top-width:3px; border-top-style:solid; flex:none; transform:translateY(-.3rem); }
+
+  /* ---------- demo runbook ---------- */
+  .runbook { display:grid; gap:.5rem; }
+  .rb { display:grid; grid-template-columns: 3.2rem 1fr; gap:1rem; align-items:baseline; border:1px solid var(--line); background:var(--ground-2); border-radius:4px; padding:.65rem .9rem; }
+  .rb .clock { font-family:var(--mono); font-size:.78rem; color:var(--ember); }
+  .rb .what { font-size:.88rem; color:var(--ink-dim); line-height:1.4; }
+  .rb .what b { color:var(--ink); font-weight:600; }
+  .rb .what code { font-family:var(--mono); color:var(--cyan); font-size:.86em; }
+
+  /* ---------- chrome ---------- */
+  .frame {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.1rem var(--pad);
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    pointer-events: none;
+    z-index: 5;
+  }
+  .brand { display:flex; align-items:center; gap:.6rem; }
+  .brand svg { width: 16px; height: 16px; }
+  .brand .glyph { color: var(--smith); }
+  .counter { font-variant-numeric: tabular-nums; }
+  .counter b { color: var(--ink); font-weight: 600; }
+
+  .progress {
+    position: fixed; left: 0; bottom: 0; height: 3px;
+    background: var(--smith);
+    width: 0;
+    transition: width .45s cubic-bezier(.16,1,.3,1);
+    z-index: 6;
+    box-shadow: 0 0 12px rgba(91,147,255,.6);
+  }
+
+  .nav {
+    position: fixed; bottom: 1.1rem; right: var(--pad);
+    display: flex; gap: .5rem; z-index: 7;
+  }
+  .nav button {
+    font-family: var(--mono);
+    background: var(--ground-2);
+    color: var(--ink-dim);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    width: 2.4rem; height: 2.4rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color .2s, color .2s, background .2s;
+  }
+  .nav button:hover { color: var(--smith); border-color: var(--smith); }
+  .nav button:focus-visible { outline: 2px solid var(--smith); outline-offset: 2px; }
+
+  /* 720p projectors */
+  @media (max-height: 780px) {
+    .slide { padding-top: 2.4rem; padding-bottom: 2.4rem; }
+    h2.headline { font-size: clamp(1.5rem, 3.2vw, 2.3rem); margin-bottom: 1rem; }
+    .eyebrow { margin-bottom: 1rem; }
+    .lead { font-size: clamp(.98rem, 1.5vw, 1.2rem); }
+    .callout { margin-top: 1.2rem; }
+    .note { margin-top: 1.1rem; }
+  }
+
+  .hint {
+    position: fixed; bottom: 1.4rem; left: var(--pad);
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); z-index: 7;
+    pointer-events: none;
+  }
+  .hint kbd {
+    border: 1px solid var(--line); border-radius: 3px; padding: .05rem .35rem;
+    color: var(--ink-dim); background: var(--ground-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide { transition: opacity .2s ease; transform: none; }
+    .progress { transition: none; }
+    .live { animation: none; }
+  }
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · HERO -->
+  <section class="slide" id="s1">
+    <div class="slide-inner">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-frame">
+            <p class="eyebrow smith" style="margin:0">AI Community of Practice · August 2026</p>
+            <span class="part-badge">10 min · <b>demo</b></span>
+          </div>
+          <h1 class="hero-title">SMITHERS<span class="l2">_</span></h1>
+          <p class="hero-sub">Your agent runs for three days. <strong style="color:var(--ink)">Something has to remember.</strong></p>
+          <p class="hero-part-note">Last talk I argued the <b>graph</b> is the artifact, not the loop. This one is the tool half: what Smithers actually is, three ways in, a live run — and why good graphs are the road to <b>models we host ourselves</b>.</p>
+          <p class="hero-meta">durable · typed · resumable · measurable</p>
+        </div>
+        <div class="canvas-wrap"><canvas id="graphCanvas" width="760" height="760"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · THE PROBLEM -->
+  <section class="slide" id="s2">
+    <div class="slide-inner">
+      <p class="eyebrow">The thing you already do</p>
+      <h2 class="headline">You already run agents unattended.<br />Nothing <span class="accent">survives the night</span>.</h2>
+      <p class="lead wide" style="margin-bottom:1.6rem">Everyone in this room has a <code style="font-family:var(--mono);color:var(--cyan)">while true</code> around a coding agent, or a script that fires one on a webhook. It works right up until it doesn't:</p>
+      <div class="cols four">
+        <div class="card"><span class="k">03:12</span><h3>Laptop sleeps</h3><p>Six hours of reasoning gone. The next run starts from an empty context and the half-finished branch.</p></div>
+        <div class="card"><span class="k">no answer</span><h3>It needed you</h3><p>It hit an ambiguous call at 2am. Best case it stalled; worst case it guessed and committed.</p></div>
+        <div class="card"><span class="k">$$$</span><h3>One model, every step</h3><p>The frontier model formatted your JSON and renamed your variables at frontier prices.</p></div>
+        <div class="card"><span class="k">?</span><h3>No idea why</h3><p>It went sideways somewhere around turn 40. There is no frame to go stand at.</p></div>
+      </div>
+      <p class="callout">The agent isn't the missing piece. The <em>control plane around it</em> is.</p>
+    </div>
+  </section>
+
+  <!-- 3 · WHAT IT IS -->
+  <section class="slide statement" id="s3">
+    <div class="slide-inner">
+      <p class="eyebrow smith">The one-liner, theirs not mine</p>
+      <h2 class="headline">“Durable AI workflow orchestration<br />as a <span class="accent-smith">JSX runtime</span>.”</h2>
+      <p class="lead wide">A workflow is a TypeScript JSX tree in your repo. It runs for minutes or days. Every finished step is persisted the moment it finishes, so a crash resumes at the last completed node instead of starting over. A run waiting on a human is <strong>a row in a database, not a process</strong> — it costs nothing while it waits.</p>
+      <div class="chips" style="margin-top:1.6rem">
+        <span class="on">npm · smithers-orchestrator</span><span>smithers.sh</span><span>41 components</span><span>19 agent adapters</span><span>0.31.0 in our monorepo</span>
+      </div>
+      <p class="note">// don't install it globally — <code style="color:var(--cyan)">bunx smithers-orchestrator &lt;cmd&gt;</code>. on npm, plain <code>smithers</code> is somebody else's package.</p>
+    </div>
+  </section>
+
+  <!-- 4 · MENTAL MODEL -->
+  <section class="slide" id="s4">
+    <div class="slide-inner">
+      <p class="eyebrow smith">The whole mental model, once</p>
+      <h2 class="headline">Every frame asks one question:<br /><span class="accent-smith">what can run now?</span></h2>
+      <p class="lead wide">Smithers re-renders your workflow tree every frame against persisted state. Runnable nodes dispatch a real coding agent; the output is validated against a Zod schema, written to a row, and the tree renders again. Completed nodes are skipped — never re-run.</p>
+      <div class="loopflow">
+        <span class="fbox">render the tree</span><span class="ar">→</span>
+        <span class="fbox">what's runnable?</span><span class="ar">→</span>
+        <span class="fbox hi">dispatch an agent</span><span class="ar">→</span>
+        <span class="fbox">validate w/ Zod</span><span class="ar">→</span>
+        <span class="fbox ok">persist the row</span><span class="ar back">↺</span>
+      </div>
+      <p class="callout smith" style="margin-top:1.8rem">That is the entire trick. Retries, approvals, loops, worktrees, evals, time travel — all of it is a component composed over <em>that</em>.</p>
+      <p class="note">// this is why it's JSX and not YAML: the graph is a function of state, so it can be conditional, mapped over data, and typed.</p>
+    </div>
+  </section>
+
+  <!-- 5 · DURABILITY -->
+  <section class="slide" id="s5">
+    <div class="slide-inner">
+      <p class="eyebrow smith">Benefit 1 · the one that matters most</p>
+      <h2 class="headline">Every finished node is a <span class="accent-smith">row</span>.</h2>
+      <div class="cols two">
+        <div>
+          <p class="lead">The run is not a process — it's a table of frames. Kill the machine mid-run, restart, and it picks up at the node it was on. Nodes 01 and 02 are never paid for twice.</p>
+          <p class="callout smith">An always-on agent that restarts from scratch after a crash isn't autonomous. It's a very expensive random number generator.</p>
+        </div>
+        <div>
+          <div class="frames">
+            <div class="frame-box done"><div class="fn2">frame 01</div><div class="fv">review ✓</div></div>
+            <div class="frame-box done"><div class="fn2">frame 02</div><div class="fv">fix ✓</div></div>
+            <div class="frame-box here"><div class="fn2">frame 03</div><div class="fv">gate ⟳</div></div>
+            <div class="frame-box ghost"><div class="fn2">frame 04</div><div class="fv">approve</div></div>
+          </div>
+          <p class="note" style="margin-top:1.2rem">// ✕ process dies at frame 03 → restart resumes at frame 03.</p>
+          <div class="code term" data-file="the crash test — try this live" style="margin-top:1.2rem">
+<pre><span class="ps">$</span> smithers up wf.tsx <span class="com"># ^C it mid-run</span>
+<span class="ps">$</span> smithers up wf.tsx --run-id <span class="pn">&lt;</span>id<span class="pn">&gt;</span> --resume true</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · THREE ROUTES -->
+  <section class="slide" id="s6">
+    <div class="slide-inner">
+      <p class="eyebrow">How you actually use it</p>
+      <h2 class="headline">Three routes in. Take the <span class="accent">lightest</span> one that keeps the durability you need.</h2>
+      <div class="steps" style="margin-top:.4rem">
+        <div class="step">
+          <div class="n">TIER 0</div><div class="t">Direct</div>
+          <div class="d">One typo, one rename, under ~10 agent turns. No orchestration earns its keep here.</div>
+          <span class="cmd">// just do it</span>
+        </div>
+        <div class="step now">
+          <div class="n">TIER 1</div><div class="t">Oneshot</div>
+          <div class="d">One clear goal, one strong agent. Nothing to author — background run, live UI, chat / diff / pause / hijack.</div>
+          <span class="cmd">smithers oneshot "&lt;goal&gt;"</span>
+        </div>
+        <div class="step smithy">
+          <div class="n">TIER 2</div><div class="t">Workflow</div>
+          <div class="d">Order, retries, approvals, loops, several models — or <em>reuse</em>. One executable graph per file.</div>
+          <span class="cmd">smithers up wf.tsx --interactive</span>
+        </div>
+      </div>
+      <p class="callout" style="margin-top:1.8rem">If a procedure <strong>recurs</strong>, that's the argument for a workflow over a skill. A skill is static prose an agent re-interprets every time. A workflow is executable, durable, typed, inspectable — and measurable.</p>
+    </div>
+  </section>
+
+  <!-- 7 · DEMO 1 -->
+  <section class="slide" id="s7">
+    <div class="slide-inner">
+      <p class="eyebrow">Demo 1 · sixty seconds <span class="live">live</span></p>
+      <h2 class="headline">The cheapest possible taste: <span class="accent">oneshot</span>.</h2>
+      <div class="cols two">
+        <div class="code term" data-file="terminal">
+<pre><span class="ps">$</span> smithers oneshot --status
+<span class="com"># → usable agents, model fallback chain, prefs</span>
+
+<span class="ps">$</span> smithers oneshot <span class="str">"tighten the retry policy on the
+    zap-edge client and add a test for the 429 path"</span>
+
+<span class="com"># detaches, opens a live UI</span>
+<span class="ps">$</span> smithers ps
+<span class="ps">$</span> smithers chat        <span class="com"># what is it saying?</span>
+<span class="ps">$</span> smithers diff        <span class="com"># what did it change?</span>
+<span class="ps">$</span> smithers hijack      <span class="com"># take the wheel</span></pre>
+        </div>
+        <div>
+          <p class="lead">No <code style="font-family:var(--mono);color:var(--cyan)">.smithers/</code>, no TSX, no schema. It picks a strong agent, runs in the background, and gives you the durable surface for free.</p>
+          <ul class="list tight" style="margin-top:1.2rem">
+            <li>runs detached <span>— close the terminal, it keeps going</span></li>
+            <li>live UI <span>— status, execution tree, streamed chat, diff</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">pause</code> / <code style="font-family:var(--mono);color:var(--cyan)">hijack</code> <span>— park it, or resume the session yourself in your own harness</span></li>
+            <li>optional review <span>— <code style="font-family:var(--mono);color:var(--cyan)">--review on</code> adds a reviewer pass</span></li>
+          </ul>
+          <p class="callout">This is the on-ramp. If oneshot is enough, you never write a graph.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · YOU DON'T LEARN THE CLI -->
+  <section class="slide statement" id="s8">
+    <div class="slide-inner">
+      <p class="eyebrow smith">The part that surprised me</p>
+      <h2 class="headline">You are not the <span class="accent-smith">operator</span>.<br />Your agent is.</h2>
+      <p class="lead wide">Smithers ships two documentation sets: a human one, and an agent one. The agent-facing docs open with a directive — <em>“the human talks to an AI harness; the AI runs Smithers. Do not ask the human to run commands directly.”</em> Installing is the one step you do by hand.</p>
+      <div class="cols two" style="margin-top:1.4rem">
+        <div class="card"><span class="k">you say</span><h3>an outcome</h3><p>“Don't stop until this is production-ready.” · “Prove this third-party service works.” · “Show me it works.” · “What happened to that run?”</p></div>
+        <div class="card smith"><span class="k">your agent does</span><h3>the durable work</h3><p>Encodes tests, a reviewer gate and evals as the finish line. Watches the run, reads <code style="font-family:var(--mono)">why</code> / <code style="font-family:var(--mono)">events</code> / <code style="font-family:var(--mono)">scores</code>, and reports evidence back in plain English.</p></div>
+      </div>
+      <p class="callout smith" style="margin-top:1.6rem">So the ~85 CLI commands are not your homework. <code style="font-family:var(--mono)">smithers skills add</code> installs the skill into Claude Code, Codex, Pi and Kimi, and <code style="font-family:var(--mono)">smithers mcp add</code> mounts it as an MCP server. Then you talk.</p>
+      <p class="note">// there is also <code style="color:var(--cyan)">smithers ask "..."</code> — it answers questions about itself using your installed agent.</p>
+    </div>
+  </section>
+
+  <!-- 9 · DEMO 2 -->
+  <section class="slide" id="s9">
+    <div class="slide-inner">
+      <p class="eyebrow">Demo 2 · authoring <span class="live">live</span></p>
+      <h2 class="headline">Don't hand-write the first draft. <span class="accent">Have it written</span>.</h2>
+      <div class="cols two">
+        <div class="code term" data-file="terminal">
+<pre><span class="com"># 1. one-time: seed .smithers/ into the repo</span>
+<span class="ps">$</span> smithers init --yes
+
+<span class="com"># 2. describe the outcome in English</span>
+<span class="ps">$</span> smithers make-workflow <span class="str">"watch a compose PR
+    and auto-land it once CI is green"</span>
+
+<span class="com"># 3. the sanity check. must exit 0.</span>
+<span class="ps">$</span> smithers graph .smithers/workflows/land-pr.tsx
+
+<span class="com"># 4. run it, watch it in a full-screen TUI</span>
+<span class="ps">$</span> smithers up land-pr --interactive
+
+<span class="com"># 5. or in the browser, over every run</span>
+<span class="ps">$</span> smithers monitor</pre>
+        </div>
+        <div>
+          <p class="lead"><code style="font-family:var(--mono);color:var(--cyan)">make-workflow</code> is itself a workflow. It clarifies your request into a spec, pulls the relevant docs and skills, designs the graph, <strong>pauses for your approval</strong>, scaffolds the <code style="font-family:var(--mono)">.tsx</code> and <code style="font-family:var(--mono)">.mdx</code>, then loops on <code style="font-family:var(--mono)">graph</code> until it renders.</p>
+          <p class="lead">The default authoring path afterwards isn't TypeScript at all — it's editing a plain Markdown prompt in <code style="font-family:var(--mono);color:var(--cyan)">.smithers/prompts/</code>. You drop to JSX when you need branching, fan-out, or loops.</p>
+          <p class="callout">A bootstrapping orchestrator: the first graph you run is the one that writes graphs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · WHAT init DROPS -->
+  <section class="slide" id="s10">
+    <div class="slide-inner">
+      <p class="eyebrow">What lands in the repo</p>
+      <h2 class="headline">Four things you author. One thing you <span class="accent">never touch</span>.</h2>
+      <div style="overflow-x:auto">
+      <table class="maptable compact">
+        <thead><tr><th>path</th><th>what it is</th><th>edit it?</th></tr></thead>
+        <tbody>
+          <tr><td><code>agents.ts</code></td><td><strong>Who</strong> does the work — named agent pools mapped to provider instances. Generated from your registered accounts.</td><td>rarely</td></tr>
+          <tr><td><code>smithers.config.ts</code></td><td><code>repoCommands { lint, test, coverage }</code> — the real scripts workflows shell out to.</td><td>once</td></tr>
+          <tr><td><code>workflows/*.tsx</code></td><td><strong>What</strong> happens, in what order. One executable graph per file.</td><td>yes</td></tr>
+          <tr><td><code>prompts/*.mdx</code></td><td><strong>What to tell</strong> the agent. The default authoring surface — plain Markdown.</td><td>yes</td></tr>
+          <tr><td><code>components/*.tsx</code></td><td>Reusable graph pieces your workflows compose from.</td><td>yes</td></tr>
+          <tr><td><code>ui/*.tsx</code></td><td>Optional per-workflow browser UI, bundled and served by the Gateway.</td><td>optional</td></tr>
+          <tr><td><code>executions/ runs/ state/ *.db</code></td><td>Opaque runtime state.</td><td><span style="color:var(--bad)">never</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="callout" style="margin-top:1.4rem">Check the sources in. A graph in the repo is a graph the next engineer — and the next agent — inherits.</p>
+      <p class="note">// gotcha we hit: the default <code style="color:var(--cyan)">.gitignore</code> line ignores <code>.smithers/</code> wholesale. Narrow it to the runtime dirs or every workflow you write is invisible to the team.</p>
+    </div>
+  </section>
+
+  <!-- 11 · A REAL GRAPH -->
+  <section class="slide" id="s11">
+    <div class="slide-inner">
+      <p class="eyebrow smith">What it produced</p>
+      <h2 class="headline">Isolate → fan out → loop until green → ask a human.</h2>
+      <div class="code" data-file=".smithers/workflows/triage-and-fix.tsx">
+<pre><span class="kw">export default</span> <span class="fn">smithers</span>((ctx) <span class="pn">=&gt;</span> (
+  <span class="pn">&lt;</span><span class="tag">Workflow</span> <span class="at">name</span>=<span class="str">"triage-and-fix"</span><span class="pn">&gt;</span>
+    <span class="pn">&lt;</span><span class="tag">Worktree</span> <span class="at">path</span>=<span class="str">".wt/fix"</span> <span class="at">branch</span>=<span class="str">"fix/flaky-e2e"</span><span class="pn">&gt;</span>
+
+      <span class="com">{/* fan out: one reviewer per dimension, 4 in flight */}</span>
+      <span class="pn">&lt;</span><span class="tag">Parallel</span> <span class="at">maxConcurrency</span>=<span class="pn">{</span>4<span class="pn">}&gt;</span>
+        <span class="pn">{</span>DIMENSIONS.<span class="fn">map</span>((d) <span class="pn">=&gt;</span> (
+          <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">key</span>=<span class="pn">{</span>d.id<span class="pn">}</span> <span class="at">id</span>=<span class="pn">{</span>`review-${d.id}`<span class="pn">}</span> <span class="at">output</span>=<span class="pn">{</span>outputs.findings<span class="pn">}</span> <span class="at">agent</span>=<span class="pn">{</span>reviewer<span class="pn">}&gt;</span>
+            <span class="pn">&lt;</span><span class="tag">ReviewPrompt</span> <span class="at">dimension</span>=<span class="pn">{</span>d<span class="pn">}</span> <span class="at">diff</span>=<span class="pn">{</span>ctx.input.diff<span class="pn">}</span> <span class="pn">/&gt;</span>
+          <span class="pn">&lt;/</span><span class="tag">Task</span><span class="pn">&gt;</span>
+        ))<span class="pn">}</span>
+      <span class="pn">&lt;/</span><span class="tag">Parallel</span><span class="pn">&gt;</span>
+
+      <span class="com">{/* the "loop": one bounded node with a real stop condition */}</span>
+      <span class="pn">&lt;</span><span class="tag">Loop</span> <span class="at">until</span>=<span class="pn">{</span>(ctx) <span class="pn">=&gt;</span> ctx.<span class="fn">latest</span>(outputs.gate)?.green === <span class="kw">true</span><span class="pn">}</span> <span class="at">maxIterations</span>=<span class="pn">{</span>8<span class="pn">}&gt;</span>
+        <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"fix"</span>  <span class="at">output</span>=<span class="pn">{</span>outputs.patch<span class="pn">}</span> <span class="at">agent</span>=<span class="pn">{</span><span class="hl">implementer</span><span class="pn">}</span> <span class="pn">/&gt;</span>
+        <span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"gate"</span> <span class="at">output</span>=<span class="pn">{</span>outputs.gate<span class="pn">}</span>  <span class="at">agent</span>=<span class="pn">{</span><span class="hl">e2eRunner</span><span class="pn">}</span> <span class="at">scorers</span>=<span class="pn">{</span>scorers<span class="pn">}</span> <span class="pn">/&gt;</span>
+      <span class="pn">&lt;/</span><span class="tag">Loop</span><span class="pn">&gt;</span>
+
+      <span class="com">{/* the human only sees the risky ones */}</span>
+      <span class="pn">&lt;</span><span class="tag">ApprovalGate</span> <span class="at">id</span>=<span class="str">"ship"</span> <span class="at">output</span>=<span class="pn">{</span>outputs.decision<span class="pn">}</span> <span class="at">when</span>=<span class="pn">{</span>risk === <span class="str">"high"</span><span class="pn">}</span>
+        <span class="at">request</span>=<span class="pn">{{</span> title: <span class="str">"Land the fix?"</span>, summary <span class="pn">}}</span> <span class="at">onDeny</span>=<span class="str">"skip"</span> <span class="pn">/&gt;</span>
+
+    <span class="pn">&lt;/</span><span class="tag">Worktree</span><span class="pn">&gt;</span>
+  <span class="pn">&lt;/</span><span class="tag">Workflow</span><span class="pn">&gt;</span>
+))</pre>
+      </div>
+      <p class="note">// control flow, isolation, concurrency, termination, scoring and the human gate — one reviewable file, in the repo, next to the code it operates on.</p>
+    </div>
+  </section>
+
+  <!-- 12 · VOCABULARY -->
+  <section class="slide" id="s12">
+    <div class="slide-inner">
+      <p class="eyebrow smith">The vocabulary</p>
+      <h2 class="headline">41 components. You'll use <span class="accent-smith">eight</span>.</h2>
+      <div style="overflow-x:auto">
+      <table class="maptable compact">
+        <thead><tr><th>component</th><th>what it does</th><th>key props</th></tr></thead>
+        <tbody>
+          <tr><td>Task</td><td>The atomic unit — an agent call, a compute step, or a static value, with a typed output.</td><td><code>id · output · agent · scorers · retries</code></td></tr>
+          <tr><td>Sequence / Parallel</td><td>Ordered, or fan out concurrently. Two independent caps: leaf tasks, or whole subtrees.</td><td><code>maxConcurrency · subtreeConcurrency</code></td></tr>
+          <tr><td>Loop</td><td>The old "loop", demoted to one bounded node: re-render the body until a predicate holds.</td><td><code>until · maxIterations · onMaxReached</code></td></tr>
+          <tr><td>Branch</td><td>Mount one of two subgraphs at runtime.</td><td><code>if · then · else</code></td></tr>
+          <tr><td>Worktree</td><td>Run the subtree in its own isolated VCS worktree and branch.</td><td><code>path · branch · baseBranch</code></td></tr>
+          <tr><td>ApprovalGate</td><td>Park the run until a human signs off. Denial can fail, skip, or continue.</td><td><code>request · when · onDeny · timeoutMs</code></td></tr>
+          <tr><td>Signal / WaitForEvent</td><td>Suspend durably until a typed payload or a correlated event lands.</td><td><code>id · schema · correlationId</code></td></tr>
+          <tr><td>Sandbox</td><td>Push the subtree off-host into a real sandbox, with egress and resource limits.</td><td><code>provider · runtime · egress · cpuLimit</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="callout smith" style="margin-top:1.3rem">And the patterns ship — don't hand-roll them. <code style="font-family:var(--mono)">ReviewLoop</code> · <code style="font-family:var(--mono)">Panel</code> · <code style="font-family:var(--mono)">Debate</code> · <code style="font-family:var(--mono)">Supervisor</code> · <code style="font-family:var(--mono)">Saga</code> · <code style="font-family:var(--mono)">Optimizer</code> · <code style="font-family:var(--mono)">Sidecar</code> · <code style="font-family:var(--mono)">MergeQueue</code> · <code style="font-family:var(--mono)">Kanban</code> · <code style="font-family:var(--mono)">DriftDetector</code> · <code style="font-family:var(--mono)">ContinueAsNew</code>.</p>
+      <p class="note">// each is ~20–40 lines of JSX over the same substrate. read one, fork it, own it.</p>
+    </div>
+  </section>
+
+  <!-- 13 · HUMAN IN THE LOOP -->
+  <section class="slide" id="s13">
+    <div class="slide-inner">
+      <p class="eyebrow">Benefit 2 · the part autonomy talk skips</p>
+      <h2 class="headline">Waiting for a human is a <span class="accent">first-class state</span>.</h2>
+      <div class="cols two">
+        <div>
+          <p class="lead">“Fully autonomous” is a marketing position, not an engineering one. Real graphs stop and ask. The only question is whether stopping is <strong>cheap</strong>.</p>
+          <p class="lead">In a loop, waiting three days for a human means a process pinned open for three days. In a graph the run parks durably: zero tokens, zero compute, resumable from a CLI call, an RPC, or a button in the UI.</p>
+          <p class="callout">A gate that costs nothing to wait at is a gate you'll actually use.</p>
+        </div>
+        <div>
+          <ul class="list tight">
+            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;ApprovalGate&gt;</code> <span>— a gate you declared up front; deny can fail, skip, or continue</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">ask-human</code> <span>— an agent stuck <em>mid-task</em> raises a durable question and blocks. Exit 0 with the answer, non-zero on deny or timeout</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;Signal&gt;</code> / <code style="font-family:var(--mono);color:var(--cyan)">&lt;WaitForEvent&gt;</code> <span>— park until CI, a webhook, or a correlated payload arrives</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">&lt;Timer&gt;</code> <span>— a durable sleep, not a held thread</span></li>
+          </ul>
+          <div class="code term" data-file="clearing it from the other side" style="margin-top:1.2rem">
+<pre><span class="ps">$</span> smithers why <span class="pn">&lt;</span>run<span class="pn">&gt;</span>       <span class="com"># why is it blocked?</span>
+<span class="ps">$</span> smithers human inbox
+<span class="ps">$</span> smithers approve <span class="pn">&lt;</span>run<span class="pn">&gt;</span> --node ship --by leo</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 · TIME TRAVEL -->
+  <section class="slide" id="s14">
+    <div class="slide-inner">
+      <p class="eyebrow smith">Benefit 3 · the payoff of persisted state</p>
+      <h2 class="headline">Watch it live. Then <span class="accent-smith">rewind, fork, replay</span>.</h2>
+      <p class="lead wide">Once a run is a sequence of frames with a VCS pointer attached, “what if the reviewer had been stricter?” stops being a re-run from zero and becomes a branch.</p>
+      <div class="cols four" style="margin-top:1.3rem">
+        <div class="card smith"><span class="k">fork</span><h3>alternate timeline</h3><p>Branch an independent run from an earlier checkpoint. The original stays intact, so you can compare.</p></div>
+        <div class="card smith"><span class="k">replay</span><h3>re-execute</h3><p>Run forward again from a checkpoint, optionally restoring the worktree to match it.</p></div>
+        <div class="card smith"><span class="k">rewind</span><h3>in place</h3><p>Roll the active run back to a previous frame and continue from there.</p></div>
+        <div class="card smith"><span class="k">restore</span><h3>filesystem</h3><p>Reset the working tree to a durability snapshot — the files, not just the rows.</p></div>
+      </div>
+      <div class="code term" data-file="the debugger for agentic work" style="margin-top:1.3rem">
+<pre><span class="ps">$</span> smithers timeline <span class="pn">&lt;</span>run<span class="pn">&gt;</span>     <span class="com"># frames, forks, checkpoints</span>
+<span class="ps">$</span> smithers node <span class="pn">&lt;</span>run<span class="pn">&gt;</span> gate     <span class="com"># retries, tool calls, output</span>
+<span class="ps">$</span> smithers what <span class="pn">&lt;</span>run<span class="pn">&gt;</span>         <span class="com"># a cheap agent narrates what happened</span>
+<span class="ps">$</span> smithers fork <span class="pn">&lt;</span>run<span class="pn">&gt;</span> --seq 42  <span class="com"># stand at the frame it went sideways</span></pre>
+      </div>
+      <p class="callout smith">You stop guessing why a run went wrong and go stand at the frame where it did.</p>
+    </div>
+  </section>
+
+  <!-- 15 · MEASURE IT -->
+  <section class="slide" id="s15">
+    <div class="slide-inner">
+      <p class="eyebrow">Benefit 4 · the one that compounds</p>
+      <h2 class="headline">Prompt iteration, with <span class="accent">teeth</span> instead of vibes.</h2>
+      <div class="cols two">
+        <div>
+          <p class="lead">The reason we all fiddle with prompts is to make the agent better at a task. A workflow gives that loop a number, because every run is already a labeled example: this prompt, this context, these tools → this trace, this outcome.</p>
+          <p class="callout">A loop has no score. A graph has a score per node.</p>
+          <p class="note">// honest caveat: field-wide eval-driven development for coding agents is still under-evidenced. There's no settled playbook — but a regression suite beats a hunch.</p>
+        </div>
+        <div>
+          <div class="code term" data-file="did my change help?">
+<pre><span class="ps">$</span> smithers eval wf.tsx \
+    --cases evals/suite.jsonl --suite smoke
+
+<span class="ps">$</span> smithers scores <span class="pn">&lt;</span>run<span class="pn">&gt;</span>
+
+<span class="com"># GEPA searches prompt variants against the suite</span>
+<span class="ps">$</span> smithers optimize wf.tsx --cases evals/suite.jsonl</pre>
+          </div>
+          <ul class="list tight smith" style="margin-top:1.2rem">
+            <li>five built-in scorers <span>— schema adherence, latency, relevancy, toxicity, faithfulness</span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">llmJudge(...)</code> <span>— a rubric on any task</span></li>
+            <li>they never block <span>— sample the expensive ones with <code style="font-family:var(--mono)">ratio</code></span></li>
+            <li><code style="font-family:var(--mono);color:var(--cyan)">memory</code> <span>— cross-run facts, so run N+1 knows what run N learned</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 · THE SEAM -->
+  <section class="slide" id="s16">
+    <div class="slide-inner">
+      <p class="eyebrow smith">Benefit 5 · and the hinge of the last act</p>
+      <h2 class="headline">The graph is the constant. The <span class="accent-smith">engine</span> is the variable.</h2>
+      <div class="cols two" style="align-items:center">
+        <div class="seam">
+          <div class="seam-band"><div class="k">the author writes — the shape of the work</div><div class="v">Sequence · Parallel · Loop · Branch · Task</div></div>
+          <div class="seam-band"><div class="k">the operator sets — run-global limits &amp; gates</div><div class="v">concurrency · budget · approvals · sinks</div></div>
+          <div class="seam-line">▼ Agent seam · bound once ▼</div>
+          <div class="seam-band below"><div class="k">engine — who answers</div><div class="v">omp · claude-code · codex · pi · kimi · openai · …</div></div>
+          <div class="seam-band below"><div class="k">isolation — where it runs</div><div class="v">host · worktree · docker · bubblewrap · cloud</div></div>
+        </div>
+        <div>
+          <p class="lead">A <code style="font-family:var(--mono);color:var(--smith)">&lt;Task&gt;</code> names a <em>role</em> — <code style="font-family:var(--mono)">implementer</code>, <code style="font-family:var(--mono)">reviewer</code>, <code style="font-family:var(--mono)">grunt</code>. Which model, which harness, which thinking level, which box: all of that is bound once, in <code style="font-family:var(--mono);color:var(--cyan)">agents.ts</code>. Swapping the worker is a one-line edit that never touches the graph.</p>
+          <div class="chips" style="margin-top:1.1rem">
+            <span class="on">OmpAgent</span><span>ClaudeCodeAgent</span><span>CodexAgent</span><span>KimiAgent</span><span>GeminiAgent</span><span>PiAgent</span><span>AmpAgent</span><span>ForgeAgent</span><span>CursorAgent</span><span>OpenCodeAgent</span><span>OpenClawAgent</span><span>VibeAgent</span><span>AntigravityAgent</span><span>PoolAgent</span><span>AnthropicAgent</span><span class="local">OpenAIAgent</span><span class="local">HermesAgent</span><span>HermesCliAgent</span><span>ElizaAgent</span>
+          </div>
+          <p class="note" style="margin-top:1rem">// 19 adapters behind one interface. the two in <span style="color:var(--good)">green</span> take a <code style="color:var(--cyan)">baseURL</code> — remember those, they're the whole next act.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17 · TOKEN FURNACE -->
+  <section class="slide" id="s17">
+    <div class="slide-inner">
+      <p class="eyebrow">The vision · the problem it creates</p>
+      <div class="furnace">
+        <div class="bignum">24/7<small>graphs × repos × triggers</small></div>
+        <div>
+          <h2 class="headline" style="margin-bottom:1rem">Graphs are token furnaces.</h2>
+          <p class="lead">Nightly research. PR babysitting. Issue triage. Drift detection. Perf work. The moment durability makes always-on <em>possible</em>, you discover an enormous volume of in-flight tokens — every one of them billed on a frontier API.</p>
+          <p class="callout">Success at graph engineering is, today, a cost problem.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18 · DECOMPOSITION -->
+  <section class="slide" id="s18">
+    <div class="slide-inner">
+      <p class="eyebrow">The vision · the escape hatch</p>
+      <h2 class="headline">Good decomposition → <span class="accent">small models</span>.</h2>
+      <div class="cols two">
+        <div>
+          <p class="lead">Here's the thing the graph does to the work that nothing else does. It breaks a vague, unbounded objective into nodes that are <strong>bounded, typed, and individually verifiable</strong>:</p>
+          <ul class="list" style="margin-top:1rem">
+            <li>score this finding</li>
+            <li>verify this claim against the diff</li>
+            <li>triage this ticket into a lane</li>
+            <li>summarize this trace</li>
+            <li>run the suite and report structured failures</li>
+          </ul>
+        </div>
+        <div>
+          <p class="lead">That is exactly the shape of work a <strong>self-hostable model</strong> is already good enough to do — and a Zod schema plus a scorer catches it when it isn't.</p>
+          <p class="callout">The orchestration, the verification and the budget that keep a small model honest live in the graph <em>around</em> it. Per-node routing is what lets you actually spend the cheap model.</p>
+          <p class="note">// sandwich delegation: expensive models plan and review at the ends, cheap models implement the middle.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 19 · RENT TOKENS VS BOX -->
+  <section class="slide" id="s19">
+    <div class="slide-inner">
+      <p class="eyebrow">The vision · the pivot</p>
+      <h2 class="headline">From renting <span class="accent">tokens</span> to renting <span class="accent">hardware</span>.</h2>
+      <p class="lead wide">Decomposition put the bounded work within reach of a model small enough to run yourself. Kimi's open-weight MoE flagship is documented, in Smithers' own model notes, as “the strongest model you can self-host.” So the question opens up: <strong>what if you hosted it?</strong></p>
+      <div class="cols two" style="margin-top:1.3rem">
+        <div class="card">
+          <span class="k">today · rent tokens</span>
+          <h3>Frontier API</h3>
+          <p>Pay per token. The meter runs only when you do — zero ops, scales with use — but every always-on graph bills forever.</p>
+        </div>
+        <div class="card" style="border-color:var(--ember)">
+          <span class="k" style="color:var(--ember)">the move · rent the box</span>
+          <h3 style="color:var(--ember)">Your own rig</h3>
+          <p>Pay by the hour for GPUs. Fixed whether idle or flat out — so the whole game becomes keeping them busy.</p>
+        </div>
+      </div>
+      <p class="callout" style="margin-top:1.3rem">That flips cost from variable to fixed. Whether it pays comes down to one number: <strong>sustained</strong> throughput.</p>
+    </div>
+  </section>
+
+  <!-- 20 · ECONOMICS -->
+  <section class="slide" id="s20">
+    <div class="slide-inner">
+      <p class="eyebrow">The vision · the arithmetic <span class="roadmap">point-in-time</span></p>
+      <h2 class="headline">Saturate the rig — or the <span class="accent">API</span> wins.</h2>
+      <div class="econ">
+        <svg class="econ-chart" viewBox="0 0 720 380" role="img" aria-label="Cost per million output tokens versus sustained throughput on a log x-axis. The API is a flat dashed line at $4.40 per million. Three self-hosted configurations are downward curves crossing the API line at their break-even throughput: 4x B200 spot at about 535 TPS, 4x B200 NVFP4 at about 1,260 TPS, and 8x H200 FP8 at about 1,800 TPS. A well-tuned node sustains 10,000 to 30,000 TPS, far below the API line at well under one dollar per million.">
+          <rect x="562" y="30" width="138" height="290" fill="rgba(255,138,76,0.07)"></rect>
+          <line x1="70" y1="71" x2="700" y2="71" stroke="#232C3D" stroke-width="1"></line>
+          <line x1="70" y1="154" x2="700" y2="154" stroke="#232C3D" stroke-width="1"></line>
+          <line x1="70" y1="30" x2="70" y2="320" stroke="#39435A" stroke-width="1.5"></line>
+          <line x1="70" y1="320" x2="700" y2="320" stroke="#39435A" stroke-width="1.5"></line>
+          <line x1="70" y1="229" x2="700" y2="229" stroke="#E9C46A" stroke-width="2" stroke-dasharray="6 4"></line>
+          <polyline points="202,30 244,114 272,155 301,189 346,228 411,265 475,287 562,304 649,312 700,315" fill="none" stroke="#FF8A4C" stroke-width="2.5"></polyline>
+          <polyline points="156,30 194,105 228,156 272,205 301,229 360,263 411,282 475,297 562,309 700,316" fill="none" stroke="#62CBDA" stroke-width="2.5"></polyline>
+          <polyline points="70,76 121,157 157,198 194,229 228,250 272,271 360,296 475,310 562,315 700,318" fill="none" stroke="#6FD08C" stroke-width="2.5"></polyline>
+          <circle cx="194" cy="229" r="4.5" fill="#6FD08C"></circle>
+          <circle cx="301" cy="229" r="4.5" fill="#62CBDA"></circle>
+          <circle cx="346" cy="229" r="4.5" fill="#FF8A4C"></circle>
+          <text x="694" y="222" text-anchor="end" fill="#E9C46A" font-family="ui-monospace,monospace" font-size="13">API · $4.40 / M</text>
+          <text x="78" y="216" fill="#E9C46A" font-family="ui-monospace,monospace" font-size="12">break-even ↓</text>
+          <text x="631" y="48" text-anchor="middle" fill="#FFB37E" font-family="ui-monospace,monospace" font-size="11.5">realistic peak</text>
+          <text x="631" y="300" text-anchor="middle" fill="#FFB37E" font-family="ui-monospace,monospace" font-size="12" opacity="0.85">≈ $0.2–0.8 / M</text>
+          <text x="62" y="324" text-anchor="end" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">$0</text>
+          <text x="62" y="158" text-anchor="end" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">$8</text>
+          <text x="62" y="75" text-anchor="end" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">$12</text>
+          <text x="185" y="337" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">500</text>
+          <text x="272" y="337" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">1k</text>
+          <text x="360" y="337" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">2k</text>
+          <text x="475" y="337" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">5k</text>
+          <text x="562" y="337" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">10k</text>
+          <text x="700" y="337" text-anchor="middle" fill="#5B6679" font-family="ui-monospace,monospace" font-size="11">30k</text>
+          <text x="385" y="362" text-anchor="middle" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="12.5">sustained output TPS  (keep it busy →)</text>
+          <text x="20" y="175" fill="#98A2B6" font-family="ui-monospace,monospace" font-size="12.5" transform="rotate(-90 20 175)">$ / million output tokens</text>
+        </svg>
+        <div>
+          <p class="lead">A rented cluster bills the same serving one request or a million; the API bills only tokens. Break-even is therefore a <strong>rate you must hold around the clock</strong> — and a well-tuned node clears it by 6–24×.</p>
+          <p class="callout">self-host wins when sustained&nbsp;TPS &gt; hourly&nbsp;cost ÷ ($/tok × 3600)</p>
+          <div class="econ-legend" style="margin-top:1rem">
+            <div class="row"><i style="border-color:#E9C46A;border-top-style:dashed"></i>API — $4.40/M · the bar to beat</div>
+            <div class="row"><i style="border-color:#FF8A4C"></i>8×H200 FP8 · $28.7/hr → ~1,800 TPS</div>
+            <div class="row"><i style="border-color:#62CBDA"></i>4×B200 NVFP4 · $20/hr → ~1,260 TPS</div>
+            <div class="row"><i style="border-color:#6FD08C"></i>4×B200 spot · $8.5/hr → ~535 TPS</div>
+          </div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:.8rem">// RunPod-class rates, mid-2026 · my own numbers, not a vendor's — re-derive them before you bank on them. and measure <b>termination rate</b>, not just pass-rate: aggressive pruning is near-lossless on benchmarks and doubles non-termination on long agentic runs.</p>
+    </div>
+  </section>
+
+  <!-- 21 · THE BIND -->
+  <section class="slide" id="s21">
+    <div class="slide-inner">
+      <p class="eyebrow smith">The vision · and here is the punchline</p>
+      <h2 class="headline">Self-hosting is <span class="accent-smith">three lines</span> in agents.ts.</h2>
+      <div class="cols two" style="margin-top:.4rem">
+        <div class="code" data-file=".smithers/agents.ts">
+<pre><span class="kw">import</span> { OpenAIAgent } <span class="kw">from</span> <span class="str">"smithers-orchestrator"</span>
+
+<span class="kw">export const</span> grunt = <span class="kw">new</span> <span class="fn">OpenAIAgent</span>({
+  model: <span class="str">"kimi-k2-instruct"</span>,
+  <span class="hl">baseURL</span>: <span class="str">"http://10.0.0.7:8000/v1"</span>,  <span class="com">// your vLLM</span>
+  <span class="hl">apiKey</span>: <span class="str">"none"</span>,
+  <span class="hl">api</span>: <span class="str">"chat"</span>,                 <span class="com">// not /responses</span>
+  nativeStructuredOutput: <span class="kw">false</span>, <span class="com">// let Smithers extract</span>
+  tools,
+})</pre>
+        </div>
+        <div class="code" data-file="triage-and-fix.tsx — unchanged">
+<pre><span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"fix"</span>   <span class="at">agent</span>=<span class="pn">{</span><span class="hl">implementer</span><span class="pn">}</span> … <span class="pn">/&gt;</span>
+<span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"score"</span> <span class="at">agent</span>=<span class="pn">{</span><span class="hl">grunt</span><span class="pn">}</span>       … <span class="pn">/&gt;</span>
+<span class="pn">&lt;</span><span class="tag">Task</span> <span class="at">id</span>=<span class="str">"triage"</span> <span class="at">agent</span>=<span class="pn">{</span><span class="hl">grunt</span><span class="pn">}</span>      … <span class="pn">/&gt;</span>
+
+<span class="com">// the graph never learns the model moved</span>
+<span class="com">// in-house. it still just names a role.</span>
+<span class="com">//</span>
+<span class="com">// so migration is incremental: move the</span>
+<span class="com">// grunt nodes first, keep the two nodes</span>
+<span class="com">// that need judgment on the frontier API,</span>
+<span class="com">// and let the eval suite tell you whether</span>
+<span class="com">// you can move any more.</span></pre>
+        </div>
+      </div>
+      <p class="callout smith" style="margin-top:1.3rem">This is why the seam matters. Self-hosting isn't a rewrite, a migration, or a platform decision — it's a <strong>per-node</strong> decision, made in one file, and graded by an eval suite you already have.</p>
+      <p class="note">// gotcha, straight from the docs: string models default to OpenAI's <code style="color:var(--cyan)">/responses</code>, which vLLM and llama.cpp don't implement — every call 404s. <code style="color:var(--cyan)">api: "chat"</code> is the fix.</p>
+    </div>
+  </section>
+
+  <!-- 22 · CLOSING -->
+  <section class="slide" id="s22">
+    <div class="slide-inner">
+      <p class="eyebrow">If you remember three things</p>
+      <h2 class="headline">Persist it. Gate it. Bind late.</h2>
+      <div class="stick">
+        <div class="item"><div class="t">Durable beats autonomous.<span>Every finished node is a row. Crash-resume, rewind, fork and replay are the difference between an agent that runs for days and one that merely <em>starts</em> for days.</span></div></div>
+        <div class="item"><div class="t">Stopping to ask must be free.<span>A parked run is a row, not a pinned process. Approvals and <code style="font-family:var(--mono)">ask-human</code> cost nothing to wait at, which is the only reason anyone puts them in.</span></div></div>
+        <div class="item"><div class="t">The node is the unit of cost — and of freedom.<span>Bind the engine per role in one file. That's how you spend a cheap model where it's safe, and it's how self-hosting becomes an incremental, measurable decision instead of a bet.</span></div></div>
+      </div>
+      <p class="callout" style="margin-top:1.6rem">Start absurdly small: <code style="font-family:var(--mono)">smithers oneshot "&lt;the thing you were going to babysit anyway&gt;"</code>. If you run it twice, make it a graph.</p>
+      <p class="note" style="margin-top:.9rem">// smithers.sh · github.com/smithersai/smithers · <code style="color:var(--cyan)">smithers ask "..."</code> · questions?</p>
+    </div>
+  </section>
+
+  <!-- 23 · APPENDIX: RUNBOOK -->
+  <section class="slide" id="s23">
+    <div class="slide-inner">
+      <p class="eyebrow">Appendix · presenter runbook <span class="live">demo</span></p>
+      <h2 class="headline">The two demos, timed.</h2>
+      <div class="runbook">
+        <div class="rb"><div class="clock">-10m</div><div class="what"><b>Before you start.</b> <code>smithers oneshot --status</code> must print usable agents. <code>smithers ps</code> must be reachable. Have a repo with <code>.smithers/</code> already seeded and one <em>real</em> small task picked out.</div></div>
+        <div class="rb"><div class="clock">-2m</div><div class="what"><b>Pre-warm demo 1.</b> Launch the oneshot before the talk so there's a run with real output to show. Fresh runs are ten minutes of watching a spinner.</div></div>
+        <div class="rb"><div class="clock">03:30</div><div class="what"><b>Demo 1 · slide 07.</b> <code>smithers ps</code> → <code>smithers chat</code> → <code>smithers diff</code>. Then <code>smithers monitor</code> in the browser: execution tree, node output, the approval button. Do not read the CLI aloud — narrate the tree.</div></div>
+        <div class="rb"><div class="clock">05:00</div><div class="what"><b>Demo 2 · slide 09.</b> <code>smithers graph .smithers/workflows/&lt;id&gt;.tsx</code> live — it renders the whole graph in a second and it's the most convincing thing in the deck. Only start <code>make-workflow</code> if you have slack; it pauses for approval.</div></div>
+        <div class="rb"><div class="clock">06:00</div><div class="what"><b>The crash test · slide 05.</b> If demo 1 is still running: <code>Ctrl-C</code> it, then <code>smithers up ... --resume true</code>. Ninety seconds, and it lands the whole durability argument better than the slide does.</div></div>
+        <div class="rb"><div class="clock">fallback</div><div class="what"><b>If the network dies.</b> <code>smithers graph</code>, <code>smithers timeline</code>, <code>smithers inspect</code> and <code>smithers why</code> all read local state and work offline. Lean on those.</div></div>
+      </div>
+      <p class="note">// every command in this deck was checked against smithers 0.31.0 --help and the llms-full docs bundle.</p>
+    </div>
+  </section>
+
+</div>
+
+<div class="frame">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="glyph" aria-hidden="true">
+      <circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/>
+      <path d="M6.6 7.6 10.6 16M17.4 7.6 13.4 16M7.2 6h9.6" stroke-linecap="round"/>
+    </svg>
+    <span>Smithers · Aug 2026</span>
+  </div>
+  <div class="counter"><b id="cur">01</b> / <span id="total">23</span></div>
+</div>
+
+<div class="progress" id="bar"></div>
+
+<div class="hint"><kbd>←</kbd> <kbd>→</kbd> navigate</div>
+
+<nav class="nav" aria-label="Slide navigation">
+  <button id="prev" aria-label="Previous slide">‹</button>
+  <button id="next" aria-label="Next slide">›</button>
+</nav>
+
+<script>
+  (function () {
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const total = slides.length;
+    let i = 0;
+    const curEl = document.getElementById('cur');
+    const totalEl = document.getElementById('total');
+    const bar = document.getElementById('bar');
+    totalEl.textContent = String(total).padStart(2, '0');
+
+    function show(n) {
+      i = Math.max(0, Math.min(total - 1, n));
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === i));
+      curEl.textContent = String(i + 1).padStart(2, '0');
+      bar.style.width = ((i + 1) / total) * 100 + '%';
+      if (location.hash !== '#' + (i + 1)) history.replaceState(null, '', '#' + (i + 1));
+    }
+    const next = () => show(i + 1);
+    const prev = () => show(i - 1);
+
+    document.getElementById('next').addEventListener('click', next);
+    document.getElementById('prev').addEventListener('click', prev);
+
+    window.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowRight': case ' ': case 'PageDown': case 'l': case 'j': next(); e.preventDefault(); break;
+        case 'ArrowLeft': case 'PageUp': case 'h': case 'k': prev(); e.preventDefault(); break;
+        case 'Home': show(0); break;
+        case 'End': show(total - 1); break;
+      }
+    });
+
+    // basic touch swipe
+    let x0 = null;
+    window.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    window.addEventListener('touchend', (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 50) (dx < 0 ? next : prev)();
+      x0 = null;
+    }, { passive: true });
+
+    const start = parseInt((location.hash || '').slice(1), 10);
+    show(Number.isFinite(start) && start >= 1 ? start - 1 : 0);
+
+    // ---- hero: a DAG with tokens flowing along edges, and one feedback edge ----
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canvas = document.getElementById('graphCanvas');
+    if (canvas && canvas.getContext) {
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+
+      const N = [
+        { x: .50, y: .10, r: 16, c: 'ember' },  // 0 trigger
+        { x: .22, y: .35, r: 14, c: 'smith' },  // 1 fan-out a
+        { x: .50, y: .35, r: 14, c: 'smith' },  // 2 fan-out b
+        { x: .78, y: .35, r: 14, c: 'smith' },  // 3 fan-out c
+        { x: .50, y: .60, r: 17, c: 'ember' },  // 4 join / loop body
+        { x: .50, y: .86, r: 16, c: 'good'  },  // 5 gate
+      ].map(n => ({ ...n, px: n.x * W, py: n.y * H }));
+
+      const E = [
+        [0, 1, false], [0, 2, false], [0, 3, false],
+        [1, 4, false], [2, 4, false], [3, 4, false],
+        [4, 5, false],
+        [5, 4, true], // the bounded cycle
+      ];
+
+      const COL = {
+        ember: '#FF8A4C',
+        smith: '#5B93FF',
+        good:  '#6FD08C',
+      };
+
+      const tokens = Array.from({ length: 9 }, (_, k) => ({
+        e: k % E.length,
+        t: Math.random(),
+        speed: 0.0042 + (k % 4) * 0.0011,
+      }));
+
+      function edgePoint(edge, t) {
+        const [a, b, fb] = edge;
+        const A = N[a], B = N[b];
+        if (!fb) {
+          return { x: A.px + (B.px - A.px) * t, y: A.py + (B.py - A.py) * t };
+        }
+        const cx = W * 0.90, cy = (A.py + B.py) / 2;
+        const u = 1 - t;
+        return {
+          x: u * u * A.px + 2 * u * t * cx + t * t * B.px,
+          y: u * u * A.py + 2 * u * t * cy + t * t * B.py,
+        };
+      }
+
+      function drawEdge(edge) {
+        const [a, b, fb] = edge;
+        const A = N[a], B = N[b];
+        ctx.beginPath();
+        if (fb) {
+          ctx.moveTo(A.px, A.py);
+          ctx.quadraticCurveTo(W * 0.90, (A.py + B.py) / 2, B.px, B.py);
+          ctx.strokeStyle = 'rgba(255,138,76,0.38)';
+          ctx.setLineDash([6, 6]);
+        } else {
+          ctx.moveTo(A.px, A.py);
+          ctx.lineTo(B.px, B.py);
+          ctx.strokeStyle = 'rgba(35,44,61,1)';
+          ctx.setLineDash([]);
+        }
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      function frame() {
+        ctx.clearRect(0, 0, W, H);
+
+        for (const e of E) drawEdge(e);
+
+        for (const tk of tokens) {
+          const edge = E[tk.e];
+          for (let s = 0; s < 8; s++) {
+            const tt = Math.max(0, tk.t - s * 0.035);
+            const p = edgePoint(edge, tt);
+            const a = (1 - s / 8) * 0.45;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 5 * (1 - s / 12), 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(156,187,255,' + a + ')';
+            ctx.fill();
+          }
+          const p = edgePoint(edge, tk.t);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#9CBBFF';
+          ctx.shadowColor = 'rgba(91,147,255,0.9)';
+          ctx.shadowBlur = 12;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          tk.t += tk.speed;
+          if (tk.t >= 1) {
+            tk.t = 0;
+            const arrived = edge[1];
+            const outgoing = E.map((e, idx) => [e, idx]).filter(([e]) => e[0] === arrived);
+            tk.e = outgoing.length
+              ? outgoing[(Math.random() * outgoing.length) | 0][1]
+              : (Math.random() * 3) | 0;
+          }
+        }
+
+        for (const n of N) {
+          ctx.beginPath();
+          ctx.arc(n.px, n.py, n.r, 0, Math.PI * 2);
+          ctx.fillStyle = '#0B0E14';
+          ctx.fill();
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = COL[n.c];
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(n.px, n.py, n.r * 0.36, 0, Math.PI * 2);
+          ctx.fillStyle = COL[n.c];
+          ctx.fill();
+        }
+
+        if (!reduce) requestAnimationFrame(frame);
+      }
+      frame();
+    }
+  })();
+</script>
